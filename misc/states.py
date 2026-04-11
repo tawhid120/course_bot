@@ -1,18 +1,13 @@
 # misc/states.py
 # Copyright @YourChannel
 
-"""
-In-memory FSM (Finite State Machine).
-Keyed by user_id → { "state": str, "data": dict }
-"""
-
 from typing import Any, Dict, Optional
 
 _store: Dict[int, Dict[str, Any]] = {}
 
 
 class States:
-    # ── User navigation ───────────────────────────────────────────────────
+    # ── User navigation ───────────────────────────────────────
     SELECT_BRAND    = "select_brand"
     SELECT_BATCH    = "select_batch"
     SELECT_CATEGORY = "select_category"
@@ -21,7 +16,7 @@ class States:
     VIEW_COURSE     = "view_course"
     PAYMENT         = "payment"
 
-    # ── Admin: Add Course (8 steps) ───────────────────────────────────────
+    # ── Admin: Add Course (9 steps + Step 10 group) ───────────
     ADMIN_ADD_BRAND    = "admin_add_brand"
     ADMIN_ADD_BATCH    = "admin_add_batch"
     ADMIN_ADD_CATEGORY = "admin_add_category"
@@ -31,14 +26,16 @@ class States:
     ADMIN_ADD_PRICE    = "admin_add_price"
     ADMIN_ADD_CURRENCY = "admin_add_currency"
     ADMIN_ADD_FILE     = "admin_add_file"
+    ADMIN_ADD_GROUP    = "admin_add_group"   # ← Step 10 নতুন
 
-    # ── Admin: Broadcast ──────────────────────────────────────────────────
+    # ── Admin: Set group for existing course ──────────────────
+    ADMIN_SET_GROUP    = "admin_set_group"   # ← নতুন
+
+    # ── Admin: Broadcast ──────────────────────────────────────
     ADMIN_BROADCAST = "admin_broadcast"
 
     IDLE = "idle"
 
-
-# ─── FSM API ─────────────────────────────────────────────────────────────────
 
 def set_state(
     user_id: int,
