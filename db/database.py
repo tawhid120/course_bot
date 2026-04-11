@@ -1,25 +1,28 @@
 # db/database.py
+# Copyright @YourChannel
+
 """
-Central database layer.
+MongoDB async database layer using motor.
+
 Collections:
-  - courses   : all course documents
-  - users     : registered users
-  - orders    : purchase orders / payment records
+  courses  → all course documents
+  users    → registered users
+  orders   → purchase orders
 
 Course document schema:
 {
-    "_id"        : ObjectId,
-    "brand"      : str,          # Level 1
-    "batch"      : str,          # Level 2
-    "category"   : str,          # Level 3
-    "subject"    : str,          # Level 4
-    "name"       : str,          # Level 5  (course name)
-    "description": str,
-    "price"      : float,
-    "currency"   : str,          # e.g. "INR"
-    "file_id"    : str | None,   # Telegram file_id for preview
-    "created_at" : datetime,
-    "is_active"  : bool,
+    "_id"         : ObjectId,
+    "brand"       : str,
+    "batch"       : str,
+    "category"    : str,
+    "subject"     : str,
+    "name"        : str,
+    "description" : str,
+    "price"       : float,
+    "currency"    : str,
+    "file_id"     : str | None,
+    "created_at"  : datetime,
+    "is_active"   : bool,
 }
 """
 
@@ -30,11 +33,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import DATABASE_NAME, MONGO_URI
 
-# ─── Singleton Client ────────────────────────────────────────────────────────
+# ─── Singleton ───────────────────────────────────────────────────────────────
 _client: Optional[AsyncIOMotorClient] = None
 
 
-def get_client() -> AsyncIOMotorClient:
+def _get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
         _client = AsyncIOMotorClient(MONGO_URI)
@@ -42,15 +45,15 @@ def get_client() -> AsyncIOMotorClient:
 
 
 def get_db():
-    return get_client()[DATABASE_NAME]
+    return _get_client()[DATABASE_NAME]
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  COURSE HELPERS
+#  COURSE OPERATIONS
 # ════════════════════════════════════════════════════════════════════════════
 
 async def add_course(data: Dict[str, Any]) -> str:
-    """Insert a new course document. Returns the inserted _id as string."""
+    """Insert new course. Returns inserted _id as string."""
     db = get_db()
     data.setdefault("created_at", datetime.utcnow())
     data.setdefault("is_active", True)
@@ -60,13 +63,11 @@ async def add_course(data: Dict[str, Any]) -> str:
 
 
 async def get_brands() -> List[str]:
-    """Return distinct active brand names (Level 1)."""
     db = get_db()
     return await db.courses.distinct("brand", {"is_active": True})
 
 
 async def get_batches(brand: str) -> List[str]:
-    """Return distinct active batch names for a brand (Level 2)."""
     db = get_db()
     return await db.courses.distinct(
         "batch", {"brand": brand, "is_active": True}
@@ -74,7 +75,6 @@ async def get_batches(brand: str) -> List[str]:
 
 
 async def get_categories(brand: str, batch: str) -> List[str]:
-    """Return distinct active categories (Level 3)."""
     db = get_db()
     return await db.courses.distinct(
         "category", {"brand": brand, "batch": batch, "is_active": True}
@@ -82,18 +82,21 @@ async def get_categories(brand: str, batch: str) -> List[str]:
 
 
 async def get_subjects(brand: str, batch: str, category: str) -> List[str]:
-    """Return distinct active subjects (Level 4)."""
     db = get_db()
     return await db.courses.distinct(
         "subject",
-        {"brand": brand, "batch": batch, "category": category, "is_active": True},
+        {
+            "brand": brand,
+            "batch": batch,
+            "category": category,
+            "is_active": True,
+        },
     )
 
 
 async def get_courses(
     brand: str, batch: str, category: str, subject: str
 ) -> List[Dict[str, Any]]:
-    """Return all active courses at Level 5."""
     db = get_db()
     cursor = db.courses.find(
         {
@@ -108,48 +111,38 @@ async def get_courses(
 
 
 async def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
-    """Fetch a single course by its string _id."""
     from bson import ObjectId
-
     db = get_db()
     return await db.courses.find_one({"_id": ObjectId(course_id)})
 
 
 async def deactivate_course(course_id: str) -> bool:
-    """Soft-delete: set is_active=False."""
     from bson import ObjectId
-
     db = get_db()
     result = await db.courses.update_one(
-        {"_id": ObjectId(course_id)}, {"$set": {"is_active": False}}
+        {"_id": ObjectId(course_id)},
+        {"$set": {"is_active": False}},
     )
     return result.modified_count > 0
 
 
-async def delete_course_hard(course_id: str) -> bool:
-    """Hard delete a course document."""
-    from bson import ObjectId
-
-    db = get_db()
-    result = await db.courses.delete_one({"_id": ObjectId(course_id)})
-    return result.deleted_count > 0
-
-
 async def get_all_courses_admin() -> List[Dict[str, Any]]:
-    """Admin: return ALL courses (active + inactive)."""
     db = get_db()
     return await db.courses.find({}).to_list(length=None)
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  USER HELPERS
+#  USER OPERATIONS
 # ════════════════════════════════════════════════════════════════════════════
 
 async def upsert_user(user_id: int, data: Dict[str, Any]) -> None:
     db = get_db()
     await db.users.update_one(
         {"user_id": user_id},
-        {"$set": data, "$setOnInsert": {"joined_at": datetime.utcnow()}},
+        {
+            "$set": data,
+            "$setOnInsert": {"joined_at": datetime.utcnow()},
+        },
         upsert=True,
     )
 
@@ -165,7 +158,7 @@ async def get_all_users() -> List[Dict[str, Any]]:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  ORDER HELPERS
+#  ORDER OPERATIONS
 # ════════════════════════════════════════════════════════════════════════════
 
 async def create_order(order_data: Dict[str, Any]) -> str:
@@ -188,9 +181,9 @@ async def get_all_pending_orders() -> List[Dict[str, Any]]:
 
 async def update_order_status(order_id: str, status: str) -> bool:
     from bson import ObjectId
-
     db = get_db()
     result = await db.orders.update_one(
-        {"_id": ObjectId(order_id)}, {"$set": {"status": status}}
+        {"_id": ObjectId(order_id)},
+        {"$set": {"status": status}},
     )
     return result.modified_count > 0
