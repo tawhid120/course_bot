@@ -12,6 +12,7 @@ from pyrogram.types import CallbackQuery, Message
 import db
 from auth import is_admin
 from config import BOT_NAME, SUPPORT_USERNAME
+from misc.messages import MSG
 from misc import (
     admin_panel_inline,
     brands_inline,
@@ -50,27 +51,29 @@ def setup(app: Client) -> None:
         )
         clear_state(user.id)
 
-        admin_hint = ""
-        if is_admin(user.id):
-            admin_hint = (
-                "\n\n🔑 *You are an admin.*  "
-                "Tap **🛠 Admin Panel** button."
-            )
-
         LOGGER.info(f"[/start] user={user.id} ({user.username})")
 
         # Reply keyboard আগে পাঠাও
         await message.reply_text(
-            "_Keyboard loaded._",
+            MSG.KEYBOARD_LOADED,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_reply_keyboard(),
         )
 
+        if is_admin(user.id):
+            welcome_text = MSG.WELCOME_ADMIN.format(
+                bot_name=BOT_NAME,
+                name=user.first_name,
+            )
+        else:
+            welcome_text = MSG.WELCOME.format(
+                bot_name=BOT_NAME,
+                name=user.first_name,
+            )
+
         # তারপর inline menu
         await message.reply_text(
-            f"👋 Welcome to **{BOT_NAME}**, {user.first_name}!\n\n"
-            f"🎓 Browse and purchase premium courses easily.\n"
-            f"Tap a button below to get started.{admin_hint}",
+            welcome_text,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
             disable_web_page_preview=True,
@@ -106,14 +109,14 @@ def setup(app: Client) -> None:
         state = get_state(uid)
         if state == States.IDLE:
             await message.reply_text(
-                "ℹ️ Nothing to cancel.",
+                MSG.NOTHING_TO_CANCEL,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
             )
             return
         clear_state(uid)
         await message.reply_text(
-            "✅ Cancelled. Back to main menu.",
+            MSG.CANCELLED,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
         )
@@ -125,14 +128,7 @@ def setup(app: Client) -> None:
     @app.on_message(filters.command("help") & filters.private)
     async def cmd_help(client: Client, message: Message):
         await message.reply_text(
-            f"❓ **Help & Support**\n\n"
-            f"• Browse courses → 📚 **Courses** button\n"
-            f"• Select course → tap **🛒 Buy Now**\n"
-            f"• Pay → tap **✅ I Have Paid**\n"
-            f"• Admin verifies and activates access\n\n"
-            f"📞 Support: {SUPPORT_USERNAME}\n\n"
-            f"`/start` — Main menu\n"
-            f"`/cancel` — Cancel current action",
+            MSG.HELP.format(support=SUPPORT_USERNAME),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
         )
@@ -145,7 +141,7 @@ def setup(app: Client) -> None:
     async def cb_back_main(client: Client, callback: CallbackQuery):
         clear_state(callback.from_user.id)
         await callback.message.edit_text(
-            "🏠 **Main Menu**\n\nWhat would you like to do?",
+            MSG.MAIN_MENU,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
         )
@@ -154,10 +150,7 @@ def setup(app: Client) -> None:
     @app.on_callback_query(filters.regex(r"^help$"))
     async def cb_help(client: Client, callback: CallbackQuery):
         await callback.message.edit_text(
-            f"❓ **Help & Support**\n\n"
-            f"• 📚 Browse Courses → Select → 🛒 Buy Now\n"
-            f"• Pay → ✅ I Have Paid → Admin verifies\n\n"
-            f"📞 Support: {SUPPORT_USERNAME}",
+            MSG.HELP.format(support=SUPPORT_USERNAME),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
         )
@@ -169,25 +162,34 @@ def setup(app: Client) -> None:
         orders = await db.get_orders_by_user(uid)
 
         if not orders:
-            text = (
-                "🛒 **My Orders**\n\n"
-                "You haven't purchased anything yet."
-            )
+            text = MSG.MY_ORDERS_EMPTY
         else:
-            lines = ["🛒 **My Orders**\n"]
+            lines = [MSG.MY_ORDERS_HEADER]
             for i, o in enumerate(orders, 1):
                 course = await db.get_course_by_id(
                     str(o.get("course_id", ""))
                 )
                 cname = course["name"] if course else "Unknown"
-                emoji = {
-                    "pending":  "⏳",
-                    "approved": "✅",
-                    "rejected": "❌",
-                }.get(o.get("status", ""), "❓")
+                status_key = o.get("status", "pending")
+                status_text = MSG.ORDER_STATUS.get(
+                    status_key, "❓ Unknown"
+                )
                 lines.append(
-                    f"{i}. **{cname}**\n"
-                    f"   {emoji} {o.get('status','?').title()}"
+                    MSG.MY_ORDERS_ITEM.format(
+                        index=i,
+                        course_name=cname,
+                        status_emoji={
+                            "pending": "⏳",
+                            "approved": "✅",
+                            "rejected": "❌",
+                        }.get(status_key, "❓"),
+                        status=status_text,
+                        date=(
+                            o.get("created_at", "").strftime("%d %b %Y")
+                            if o.get("created_at")
+                            else "N/A"
+                        ),
+                    )
                 )
             text = "\n".join(lines)
 

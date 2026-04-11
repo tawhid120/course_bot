@@ -14,7 +14,9 @@ from pyrogram.types import Message
 
 import db
 from auth.admin_check import is_admin
+from config import BOT_NAME, SUPPORT_USERNAME
 from misc.keyboards import BUTTON_COMMAND_MAP, main_reply_keyboard, main_menu_inline
+from misc.messages import MSG
 from utils import LOGGER
 
 
@@ -52,8 +54,7 @@ def setup_button_router(app: Client) -> None:
         if command == "start":
             name = message.from_user.first_name
             await message.reply_text(
-                f"🏠 **Main Menu** — Hello {name}!\n\n"
-                f"Choose an option below 👇",
+                MSG.MAIN_MENU_WITH_NAME.format(name=name),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
             )
@@ -63,7 +64,9 @@ def setup_button_router(app: Client) -> None:
             brands = await db.get_brands()
             if not brands:
                 await message.reply_text(
-                    "😔 No courses available yet. Check back soon!",
+                    MSG.NO_COURSES_AVAILABLE.format(
+                        support=SUPPORT_USERNAME
+                    ),
                     parse_mode=ParseMode.MARKDOWN,
                     reply_markup=main_menu_inline(),
                 )
@@ -82,10 +85,7 @@ def setup_button_router(app: Client) -> None:
         elif command == "my_orders":
             orders = await db.get_orders_by_user(uid)
             if not orders:
-                text = (
-                    "🛒 **My Orders**\n\n"
-                    "You haven't purchased anything yet."
-                )
+                text = MSG.MY_ORDERS_EMPTY
             else:
                 lines = ["🛒 **My Orders**\n"]
                 for i, o in enumerate(orders, 1):
@@ -112,18 +112,8 @@ def setup_button_router(app: Client) -> None:
 
         # ── ❓ Help ───────────────────────────────────────────────────────────
         elif command == "help":
-            from config import SUPPORT_USERNAME
             await message.reply_text(
-                "❓ **Help & Support**\n\n"
-                "• Browse courses with 📚 **Courses** button.\n"
-                "• After selecting a course tap **🛒 Buy Now**.\n"
-                "• Complete payment → tap **✅ I Have Paid**.\n"
-                "• Admin verifies and activates your access.\n\n"
-                f"📞 Support: {SUPPORT_USERNAME}\n\n"
-                "**Commands:**\n"
-                "`/start` — Main menu\n"
-                "`/cancel` — Cancel current action\n"
-                "`/admin` — Admin panel _(admins only)_",
+                MSG.HELP.format(support=SUPPORT_USERNAME),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
             )
@@ -134,14 +124,17 @@ def setup_button_router(app: Client) -> None:
             orders  = await db.get_orders_by_user(uid)
             approved = [o for o in orders if o.get("status") == "approved"]
             await message.reply_text(
-                f"👤 **My Profile**\n\n"
-                f"🆔 **ID:** `{user.id}`\n"
-                f"📛 **Name:** {user.first_name} "
-                f"{user.last_name or ''}\n"
-                f"🔖 **Username:** "
-                f"{'@' + user.username if user.username else 'N/A'}\n\n"
-                f"🎓 **Purchased Courses:** {len(approved)}\n"
-                f"🧾 **Total Orders:** {len(orders)}",
+                MSG.PROFILE.format(
+                    user_id=user.id,
+                    full_name=(
+                        f"{user.first_name} {user.last_name or ''}"
+                    ).strip(),
+                    username=(
+                        f"@{user.username}" if user.username else "N/A"
+                    ),
+                    purchased=len(approved),
+                    total_orders=len(orders),
+                ),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
             )

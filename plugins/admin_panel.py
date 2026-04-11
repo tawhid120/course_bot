@@ -16,6 +16,7 @@ from pyrogram.types import (
 
 import db
 from auth import is_admin
+from config import SUPPORT_USERNAME
 from misc import (
     States,
     admin_back_panel_inline,
@@ -32,6 +33,7 @@ from misc import (
     set_state,
     update_data,
 )
+from misc.messages import MSG
 from utils import LOGGER
 
 
@@ -65,7 +67,9 @@ async def _do_broadcast(
     sent = failed = 0
 
     status = await message.reply_text(
-        f"📢 Broadcasting to **{len(all_users)}** users…",
+        MSG.BROADCAST_SENDING.format(
+            total_users=len(all_users)
+        ),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -97,8 +101,7 @@ async def _do_broadcast(
 
     clear_state(uid)
     await status.edit_text(
-        f"✅ **Broadcast Complete!**\n\n"
-        f"✅ Sent: {sent}\n❌ Failed: {failed}",
+        MSG.BROADCAST_DONE.format(sent=sent, failed=failed),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=admin_back_panel_inline(),
     )
@@ -514,7 +517,11 @@ def setup(app: Client) -> None:
             callback.message.chat.id,
         )
 
-        await callback.answer("✅ Approved!")
+        await callback.answer(
+            MSG.ADMIN_ORDER_APPROVED_CONFIRM.format(
+                order_id_short=order_id[-6:]
+            )
+        )
 
     # ══════════════════════════════════════════════════════════
     #  Reject Order
@@ -535,16 +542,20 @@ def setup(app: Client) -> None:
             return await callback.answer("Not found.", show_alert=True)
         await db.update_order_status(order_id, "rejected")
         await callback.message.edit_text(
-            f"❌ Order `{order_id[-6:]}` **rejected.**",
+            MSG.ADMIN_ORDER_REJECTED_CONFIRM.format(
+                order_id_short=order_id[-6:]
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=admin_back_panel_inline(),
         )
         try:
             await client.send_message(
                 order["user_id"],
-                f"❌ **Payment Rejected**\n\n"
-                f"Order: `{order_id}`\n\n"
-                f"Support: {__import__('config').ADMIN_USERNAME}",
+                MSG.PAYMENT_REJECTED.format(
+                    course_name=order.get("course_name", "Unknown Course"),
+                    order_id=order_id,
+                    support=SUPPORT_USERNAME,
+                ),
                 parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:

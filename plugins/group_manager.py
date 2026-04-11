@@ -28,6 +28,8 @@ import db
 from auth import is_admin
 from config import ADMIN_IDS, ADMIN_USERNAME
 from misc import admin_back_panel_inline, admin_panel_inline
+from misc.messages import MSG
+from config import SUPPORT_USERNAME
 from utils import LOGGER
 
 
@@ -159,21 +161,21 @@ async def send_invite_to_user(
     """
     from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-    text = (
-        f"🎉 **Payment Approved! আপনার Course Access Ready!**\n\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"🏷 **Brand:** `{course['brand']}`\n"
-        f"📖 **Subject:** `{course['subject']}`\n"
-        f"🆔 **Order ID:** `{order_id}`\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔗 **আপনার One-Time Private Link:**\n\n"
-        f"👇 নিচের বাটনে click করে Group এ যোগ দিন\n\n"
-        f"⚠️ **সতর্কতা:**\n"
-        f"• এই link শুধু **একবারই** কাজ করবে\n"
-        f"• **২৪ ঘন্টার** মধ্যে join করতে হবে\n"
-        f"• Link কারো সাথে **share করবেন না**\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"সাহায্যের জন্য: {ADMIN_USERNAME}"
+    approval_message = MSG.PAYMENT_APPROVED.format(
+        course_name=course["name"],
+        brand=course["brand"],
+        subject=course["subject"],
+        order_id=order_id,
+        support=SUPPORT_USERNAME,
+    )
+    invite_message = MSG.INVITE_LINK_MESSAGE.format(
+        course_name=course["name"],
+        order_id=order_id,
+        support=SUPPORT_USERNAME,
+    )
+    message_text = (
+        f"{approval_message}\n\n"
+        f"{invite_message}"
     )
 
     kb = InlineKeyboardMarkup(
@@ -197,7 +199,7 @@ async def send_invite_to_user(
     try:
         await client.send_message(
             user_id,
-            text,
+            message_text,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=kb,
         )
@@ -269,13 +271,11 @@ async def approve_and_send_link(
         # Group নেই — admin কে জানাও manually দিতে বলো
         await client.send_message(
             admin_chat_id,
-            f"⚠️ **Course এ Group set করা নেই!**\n\n"
-            f"📦 Course: `{course['name']}`\n"
-            f"👤 User: [{user_name}](tg://user?id={user_id})"
-            f" (`{user_id}`)\n\n"
-            f"Admin Panel → List Courses → এই course এ "
-            f"Group যোগ করুন।\n\n"
-            f"অথবা manually user কে link পাঠান।",
+            MSG.ADMIN_NO_GROUP_SET.format(
+                course_name=course["name"],
+                user_name=order.get("user_name", "User"),
+                user_id=user_id,
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -305,13 +305,11 @@ async def approve_and_send_link(
     if not invite_link:
         await client.send_message(
             admin_chat_id,
-            f"❌ **One-Time Link তৈরি করা যায়নি!**\n\n"
-            f"কারণ হতে পারে:\n"
-            f"• Bot ঐ Group এ admin না\n"
-            f"• Bot এর Invite permission নেই\n\n"
-            f"Group ID: `{group_id}`\n\n"
-            f"Bot কে group এ admin করুন এবং "
-            f"আবার try করুন।",
+            MSG.ADMIN_OTL_FAILED.format(
+                user_id=user_id,
+                course_name=course["name"],
+                group_id=group_id,
+            ),
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -337,22 +335,22 @@ async def approve_and_send_link(
     if sent:
         await client.send_message(
             admin_chat_id,
-            f"✅ **Approved & Link Sent!**\n\n"
-            f"👤 User: [{user_name}](tg://user?id={user_id})"
-            f" (`{user_id}`)\n"
-            f"📦 Course: `{course['name']}`\n"
-            f"🔗 Link: `{invite_link}`\n\n"
-            f"⚠️ Link একবারই কাজ করবে।",
+            MSG.ADMIN_OTL_SUCCESS.format(
+                user_name=order.get("user_name", "User"),
+                user_id=user_id,
+                course_name=course["name"],
+                invite_link=invite_link,
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=admin_back_panel_inline(),
         )
     else:
         await client.send_message(
             admin_chat_id,
-            f"⚠️ **Link তৈরি হয়েছে কিন্তু user কে পাঠানো যায়নি!**\n\n"
-            f"👤 User ID: `{user_id}`\n"
-            f"🔗 Link: `{invite_link}`\n\n"
-            f"User কে manually এই link পাঠান।",
+            MSG.ADMIN_OTL_SENT_FAILED.format(
+                user_id=user_id,
+                invite_link=invite_link,
+            ),
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -399,7 +397,7 @@ def setup(app: Client) -> None:
             return
 
         checking = await message.reply_text(
-            f"⏳ Group `{group_id}` check হচ্ছে...",
+            MSG.GROUP_CHECKING.format(group_id=group_id),
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -407,45 +405,24 @@ def setup(app: Client) -> None:
 
         if result["error"]:
             await checking.edit_text(
-                f"❌ **Error:**\n`{result['error']}`\n\n"
-                f"**সমাধান:**\n"
-                f"1. Bot কে Group এ add করুন\n"
-                f"2. Bot কে Admin বানান\n"
-                f"3. 'Invite Users via Link' permission দিন",
+                MSG.GROUP_CHECK_ERROR.format(error=result["error"]),
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
 
         if result["is_admin"] and result["can_invite"]:
             await checking.edit_text(
-                f"✅ **সব ঠিক আছে!**\n\n"
-                f"🆔 Group ID: `{group_id}`\n"
-                f"👑 Bot Status: Admin ✅\n"
-                f"🔗 Invite Permission: ✅\n\n"
-                f"এই Group ID টা Course এ add করতে পারবেন।",
+                MSG.GROUP_CHECK_SUCCESS.format(group_id=group_id),
                 parse_mode=ParseMode.MARKDOWN,
             )
         elif result["is_admin"] and not result["can_invite"]:
             await checking.edit_text(
-                f"⚠️ **Bot Admin কিন্তু Permission নেই!**\n\n"
-                f"🆔 Group ID: `{group_id}`\n"
-                f"👑 Bot Status: Admin ✅\n"
-                f"🔗 Invite Permission: ❌\n\n"
-                f"**সমাধান:**\n"
-                f"Group → Admin Settings → Bot → "
-                f"'Invite Users via Link' চালু করুন।",
+                MSG.GROUP_CHECK_NO_INVITE.format(group_id=group_id),
                 parse_mode=ParseMode.MARKDOWN,
             )
         else:
             await checking.edit_text(
-                f"❌ **Bot Admin না!**\n\n"
-                f"🆔 Group ID: `{group_id}`\n"
-                f"👑 Bot Status: Not Admin ❌\n\n"
-                f"**সমাধান:**\n"
-                f"1. Group এ যান\n"
-                f"2. Members → Bot → Promote to Admin\n"
-                f"3. 'Invite Users via Link' permission দিন\n"
-                f"4. আবার `/checkgroup {group_id}` দিন",
+                MSG.GROUP_CHECK_NOT_ADMIN.format(group_id=group_id),
                 parse_mode=ParseMode.MARKDOWN,
             )
 

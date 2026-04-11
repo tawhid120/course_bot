@@ -19,6 +19,8 @@ from pyrogram.types import CallbackQuery
 
 import db
 from config import ADMIN_IDS, PAYMENT_INFO
+from config import SUPPORT_USERNAME
+from misc.messages import MSG
 from misc.keyboards import (
     batches_inline,
     brands_inline,
@@ -49,7 +51,7 @@ def setup(app: Client) -> None:
         brands = await db.get_brands()
         if not brands:
             await callback.message.edit_text(
-                "😔 **No courses available yet.**\n\nPlease check back later!",
+                MSG.NO_COURSES_AVAILABLE.format(support=SUPPORT_USERNAME),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
             )
@@ -58,8 +60,7 @@ def setup(app: Client) -> None:
 
         set_state(callback.from_user.id, States.SELECT_BRAND)
         await callback.message.edit_text(
-            "🏷 **Select a Brand**\n\n"
-            "Choose the brand / institute you want to explore:",
+            MSG.SELECT_BRAND,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=brands_inline(brands),
         )
@@ -77,14 +78,13 @@ def setup(app: Client) -> None:
 
         if not batches:
             await callback.answer(
-                "⚠️ No batches found for this brand.", show_alert=True
+                MSG.NO_BATCHES, show_alert=True
             )
             return
 
         set_state(callback.from_user.id, States.SELECT_BATCH, {"brand": brand})
         await callback.message.edit_text(
-            f"📦 **Select a Batch**\n\n"
-            f"*Brand:* `{brand}`\n\nChoose a batch:",
+            MSG.SELECT_BATCH.format(brand=brand),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=batches_inline(brand, batches),
         )
@@ -103,7 +103,7 @@ def setup(app: Client) -> None:
 
         if not categories:
             await callback.answer(
-                "⚠️ No categories found for this batch.", show_alert=True
+                MSG.NO_CATEGORIES, show_alert=True
             )
             return
 
@@ -113,8 +113,7 @@ def setup(app: Client) -> None:
             {"brand": brand, "batch": batch},
         )
         await callback.message.edit_text(
-            f"📂 **Select a Category**\n\n"
-            f"*Brand:* `{brand}` › *Batch:* `{batch}`\n\nChoose a category:",
+            MSG.SELECT_CATEGORY.format(brand=brand, batch=batch),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=categories_inline(brand, batch, categories),
         )
@@ -134,7 +133,7 @@ def setup(app: Client) -> None:
 
         if not subjects:
             await callback.answer(
-                "⚠️ No subjects found for this category.", show_alert=True
+                MSG.NO_SUBJECTS, show_alert=True
             )
             return
 
@@ -144,9 +143,9 @@ def setup(app: Client) -> None:
             {"brand": brand, "batch": batch, "category": category},
         )
         await callback.message.edit_text(
-            f"📖 **Select a Subject**\n\n"
-            f"*Brand:* `{brand}` › *Batch:* `{batch}` "
-            f"› *Category:* `{category}`\n\nChoose a subject:",
+            MSG.SELECT_SUBJECT.format(
+                brand=brand, batch=batch, category=category
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=subjects_inline(brand, batch, category, subjects),
         )
@@ -169,7 +168,7 @@ def setup(app: Client) -> None:
 
         if not courses:
             await callback.answer(
-                "⚠️ No courses found for this subject.", show_alert=True
+                MSG.NO_COURSES, show_alert=True
             )
             return
 
@@ -184,9 +183,10 @@ def setup(app: Client) -> None:
             },
         )
         await callback.message.edit_text(
-            f"🎓 **Available Courses**\n\n"
-            f"*{brand}* › *{batch}* › *{category}* › *{subject}*\n\n"
-            f"Select a course to view details:",
+            MSG.SELECT_COURSE.format(
+                brand=brand, batch=batch,
+                category=category, subject=subject
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=courses_inline(brand, batch, category, subject, courses),
         )
@@ -203,7 +203,7 @@ def setup(app: Client) -> None:
         course    = await db.get_course_by_id(course_id)
 
         if not course:
-            await callback.answer("⚠️ Course not found.", show_alert=True)
+            await callback.answer(MSG.ERROR_COURSE_NOT_FOUND, show_alert=True)
             return
 
         set_state(
@@ -212,14 +212,15 @@ def setup(app: Client) -> None:
             {"course_id": course_id},
         )
 
-        text = (
-            f"🎓 **{course['name']}**\n\n"
-            f"🏷 *Brand:*    `{course['brand']}`\n"
-            f"📦 *Batch:*    `{course['batch']}`\n"
-            f"📂 *Category:* `{course['category']}`\n"
-            f"📖 *Subject:*  `{course['subject']}`\n\n"
-            f"📝 **Description:**\n{course.get('description', 'N/A')}\n\n"
-            f"💰 **Price:** {course['currency']} {course['price']}"
+        text = MSG.COURSE_DETAIL.format(
+            name=course["name"],
+            brand=course["brand"],
+            batch=course["batch"],
+            category=course["category"],
+            subject=course["subject"],
+            description=course.get("description", "N/A"),
+            currency=course["currency"],
+            price=course["price"],
         )
 
         if course.get("file_id"):
@@ -257,7 +258,9 @@ def setup(app: Client) -> None:
         course    = await db.get_course_by_id(course_id)
 
         if not course:
-            await callback.answer("⚠️ Course not found.", show_alert=True)
+            await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
+            )
             return
 
         set_state(
@@ -290,7 +293,9 @@ def setup(app: Client) -> None:
         course    = await db.get_course_by_id(course_id)
 
         if not course:
-            await callback.answer("⚠️ Course not found.", show_alert=True)
+            await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
+            )
             return
 
         uid = callback.from_user.id
