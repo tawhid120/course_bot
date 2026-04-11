@@ -64,6 +64,7 @@ from config import (
     NAGAD_NUMBER,
     SUPPORT_USERNAME,
 )
+from misc.messages import MSG
 from misc import (
     States,
     clear_state,
@@ -170,102 +171,54 @@ def admin_order_kb(order_id: str) -> InlineKeyboardMarkup:
 # ═════════════════════════════════════════════════════════════
 
 def _payment_menu_text(course: dict) -> str:
-    return (
-        f"💳 **Payment — {course['name']}**\n\n"
-        f"💰 **মূল্য:** `{course['currency']} {course['price']}`\n\n"
-        f"নিচের যেকোনো পদ্ধতিতে পেমেন্ট করুন 👇\n\n"
-        f"⭐ **Telegram Stars** — পেমেন্টের সাথে সাথেই একটিভ হবে\n"
-        f"📲 **bKash / Nagad** — বাংলাদেশী মোবাইল ব্যাংকিং\n"
-        f"🪙 **Binance USDT** — Crypto পেমেন্ট\n"
-        f"💬 **Admin Contact** — অন্য যেকোনো ব্যবস্থা\n\n"
-        f"💬 সাহায্যের জন্য: {ADMIN_USERNAME}"
+    return MSG.PAYMENT_METHOD_SELECT.format(
+        name=course["name"],
+        currency=course["currency"],
+        price=course["price"],
+        support=SUPPORT_USERNAME,
     )
 
 
 def _bkash_text(course: dict, user_id: int) -> str:
-    return (
-        f"📲 **bKash Payment**\n\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"💰 **Amount:** `{course['price']} {course['currency']}`\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n\n"
-        f"📲 **bKash নম্বর:** `{BKASH_NUMBER}`\n"
-        f"📋 **Type:** `Send Money`\n"
-        f"📝 **Reference:** `{user_id}`\n\n"
-        f"**📌 ধাপে ধাপে নির্দেশনা:**\n"
-        f"1️⃣ bKash App খুলুন\n"
-        f"2️⃣ **Send Money** তে tap করুন\n"
-        f"3️⃣ নম্বর দিন: `{BKASH_NUMBER}`\n"
-        f"4️⃣ পরিমাণ দিন: `{course['price']} {course['currency']}`\n"
-        f"5️⃣ Reference এ দিন: `{user_id}`\n"
-        f"6️⃣ পেমেন্ট সম্পন্ন করুন\n\n"
-        f"✅ পেমেন্টের পর নিচের বাটনে ক্লিক করুন\n\n"
-        f"📞 সাহায্য: {ADMIN_USERNAME}"
+    return MSG.PAYMENT_BKASH.format(
+        course_name=course["name"],
+        price=course["price"],
+        currency=course["currency"],
+        bkash_number=BKASH_NUMBER,
+        user_id=user_id,
+        support=SUPPORT_USERNAME,
     )
 
 
 def _nagad_text(course: dict, user_id: int) -> str:
-    return (
-        f"📲 **Nagad Payment**\n\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"💰 **Amount:** `{course['price']} {course['currency']}`\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n\n"
-        f"📲 **Nagad নম্বর:** `{NAGAD_NUMBER}`\n"
-        f"📋 **Type:** `Send Money`\n"
-        f"📝 **Reference:** `{user_id}`\n\n"
-        f"**📌 ধাপে ধাপে নির্দেশনা:**\n"
-        f"1️⃣ Nagad App খুলুন\n"
-        f"2️⃣ **Send Money** তে tap করুন\n"
-        f"3️⃣ নম্বর দিন: `{NAGAD_NUMBER}`\n"
-        f"4️⃣ পরিমাণ দিন: `{course['price']} {course['currency']}`\n"
-        f"5️⃣ Reference এ দিন: `{user_id}`\n"
-        f"6️⃣ পেমেন্ট সম্পন্ন করুন\n\n"
-        f"✅ পেমেন্টের পর নিচের বাটনে ক্লিক করুন\n\n"
-        f"📞 সাহায্য: {ADMIN_USERNAME}"
+    return MSG.PAYMENT_NAGAD.format(
+        course_name=course["name"],
+        price=course["price"],
+        currency=course["currency"],
+        nagad_number=NAGAD_NUMBER,
+        user_id=user_id,
+        support=SUPPORT_USERNAME,
     )
 
 
 def _crypto_text(course: dict, user_id: int) -> str:
-    return (
-        f"🪙 **Binance / USDT (TRC20) Payment**\n\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"💰 **Amount:** `{course['price']} {course['currency']}`\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n\n"
-        f"🆔 **Binance UID:** `{BINANCE_UID}`\n"
-        f"📬 **TRC20 Address:**\n`{BINANCE_ADDRESS}`\n"
-        f"🔗 **Network:** `USDT (TRC20)`\n"
-        f"📝 **Memo / Note:** `{user_id}`\n\n"
-        f"**📌 ধাপে ধাপে নির্দেশনা:**\n"
-        f"1️⃣ Binance বা যেকোনো USDT wallet খুলুন\n"
-        f"2️⃣ **Send / Transfer** এ যান\n"
-        f"3️⃣ **USDT** → **TRC20** নেটওয়ার্ক বেছে নিন\n"
-        f"4️⃣ Address দিন: `{BINANCE_ADDRESS}`\n"
-        f"5️⃣ Amount দিন: `{course['price']} {course['currency']}`\n"
-        f"6️⃣ Memo তে দিন: `{user_id}`\n"
-        f"7️⃣ Transaction সম্পন্ন করুন\n\n"
-        f"✅ পেমেন্টের পর নিচের বাটনে ক্লিক করুন\n\n"
-        f"📞 সাহায্য: {ADMIN_USERNAME}"
+    return MSG.PAYMENT_CRYPTO.format(
+        course_name=course["name"],
+        price=course["price"],
+        currency=course["currency"],
+        binance_uid=BINANCE_UID,
+        binance_address=BINANCE_ADDRESS,
+        user_id=user_id,
+        support=SUPPORT_USERNAME,
     )
 
 
 def _admin_contact_text(course: dict) -> str:
-    return (
-        f"💬 **Admin Contact — অন্য পেমেন্ট পদ্ধতি**\n\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"💰 **Price:** `{course['currency']} {course['price']}`\n"
-        f"**━━━━━━━━━━━━━━━━━━━━━**\n\n"
-        f"উপরের কোনো পদ্ধতি আপনার জন্য suitable না?\n"
-        f"Admin কে সরাসরি message করুন।\n\n"
-        f"👤 **Admin:** {ADMIN_USERNAME}\n\n"
-        f"💡 **অন্যান্য গ্রহণযোগ্য পদ্ধতি:**\n"
-        f"• 🏦 Bank Transfer\n"
-        f"• 💵 অন্যান্য Mobile Banking\n"
-        f"• 🤝 পারস্পরিক সমঝোতায় যেকোনো ব্যবস্থা\n\n"
-        f"🇧🇩 আমরা বাংলাদেশি — আপনাকে সাহায্য করতে"
-        f" সর্বদা প্রস্তুত!"
+    return MSG.PAYMENT_ADMIN_CONTACT.format(
+        course_name=course["name"],
+        currency=course["currency"],
+        price=course["price"],
+        support=SUPPORT_USERNAME,
     )
 
 
@@ -275,14 +228,12 @@ def _stars_success_text(
     amount: int,
     tx_id: str,
 ) -> str:
-    return (
-        f"✅ **Payment সফল! Course একটিভ হয়েছে!**\n\n"
-        f"🎉 ধন্যবাদ, **{user_name}**!\n\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"⭐ **Stars Paid:** `{amount}`\n"
-        f"🧾 **Transaction ID:** `{tx_id}`\n\n"
-        f"🚀 আপনার course এখন **একটিভ**!\n\n"
-        f"সাহায্যের জন্য: {ADMIN_USERNAME} 💎"
+    return MSG.PAYMENT_STARS_SUCCESS.format(
+        user_name=user_name,
+        course_name=course["name"],
+        stars_amount=amount,
+        tx_id=tx_id,
+        support=SUPPORT_USERNAME,
     )
 
 
@@ -294,14 +245,11 @@ def _manual_submitted_text(
         "nagad":  "Nagad",
         "crypto": "Binance / USDT",
     }
-    return (
-        f"✅ **Payment Submit হয়েছে!**\n\n"
-        f"📦 **Course:** `{course['name']}`\n"
-        f"💳 **Method:** `{method_names.get(method, method)}`\n"
-        f"👤 **User ID:** `{user_id}`\n\n"
-        f"⏳ Admin আপনার payment verify করে\n"
-        f"অ্যাক্সেস দেবেন — সাধারণত কয়েক মিনিটের মধ্যে।\n\n"
-        f"📞 প্রয়োজনে contact করুন: {ADMIN_USERNAME}"
+    return MSG.PAYMENT_SUBMITTED.format(
+        course_name=course["name"],
+        method=method_names.get(method, method),
+        user_id=user_id,
+        support=SUPPORT_USERNAME,
     )
 
 
@@ -318,16 +266,15 @@ def _admin_manual_notify(
         "nagad":  "📲 Nagad",
         "crypto": "🪙 Binance / USDT",
     }
-    return (
-        f"🔔 **নতুন Manual Payment!**\n\n"
-        f"👤 **User:** [{user_name}](tg://user?id={user_id})"
-        f" (`{user_id}`)\n"
-        f"📛 **Username:** {username}\n"
-        f"📦 **Course:** {course['name']}\n"
-        f"💰 **Amount:** {course['currency']} {course['price']}\n"
-        f"💳 **Method:** {method_names.get(method, method)}\n"
-        f"🆔 **Order ID:** `{order_id}`\n\n"
-        f"⬇️ Verify করে Approve বা Reject করুন:"
+    return MSG.ADMIN_NEW_MANUAL_PAYMENT.format(
+        user_name=user_name,
+        user_id=user_id,
+        username=username,
+        course_name=course["name"],
+        currency=course["currency"],
+        price=course["price"],
+        method=method_names.get(method, method),
+        order_id=order_id,
     )
 
 
@@ -350,8 +297,7 @@ async def _send_stars_invoice(
     if _active_invoices.get(user_id):
         await client.send_message(
             chat_id,
-            "⚠️ **আরেকটি invoice ইতিমধ্যে active আছে!**\n\n"
-            "আগের invoice complete বা cancel করুন।",
+            MSG.STARS_DUPLICATE_INVOICE,
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -367,7 +313,9 @@ async def _send_stars_invoice(
 
     loading = await client.send_message(
         chat_id,
-        f"⏳ **{course['name']} এর Stars invoice তৈরি হচ্ছে...**",
+        MSG.STARS_INVOICE_GENERATING.format(
+            course_name=course["name"]
+        ),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -447,10 +395,10 @@ async def _send_stars_invoice(
         await client.edit_message_text(
             chat_id,
             loading.id,
-            f"✅ **Invoice Ready — {course['name']}**\n\n"
-            f"⭐ **{stars_amount} Stars** দিয়ে কিনুন\n\n"
-            f"উপরের **Pay** বাটনে tap করুন।\n"
-            f"পেমেন্টের সাথে সাথেই access একটিভ হবে! 🚀",
+            MSG.STARS_INVOICE_READY.format(
+                course_name=course["name"],
+                stars_amount=stars_amount,
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -477,8 +425,9 @@ async def _send_stars_invoice(
         await client.edit_message_text(
             chat_id,
             loading.id,
-            "❌ **Stars invoice তৈরি করতে সমস্যা হয়েছে।**\n\n"
-            "অন্য payment পদ্ধতি ব্যবহার করুন।",
+            MSG.STARS_INVOICE_FAILED.format(
+                support=SUPPORT_USERNAME
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=payment_methods_kb(course_id),
         )
@@ -621,8 +570,12 @@ async def _raw_update_handler(
         try:
             await client.send_message(
                 chat_id=chat_id,
-                text=_stars_success_text(
-                    course, full_name, amount_paid, tx_id
+                text=MSG.PAYMENT_STARS_SUCCESS.format(
+                    user_name=full_name,
+                    course_name=course["name"],
+                    stars_amount=amount_paid,
+                    tx_id=tx_id,
+                    support=SUPPORT_USERNAME,
                 ),
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=main_menu_inline(),
@@ -633,16 +586,14 @@ async def _raw_update_handler(
             )
 
         # ── Notify admins ─────────────────────────────────────
-        admin_text = (
-            f"⭐ **Stars Payment Received!**\n\n"
-            f"👤 **User:** [{full_name}]"
-            f"(tg://user?id={user_id}) (`{user_id}`)\n"
-            f"📛 **Username:** {username}\n"
-            f"📦 **Course:** {course['name']}\n"
-            f"⭐ **Stars:** {amount_paid}\n"
-            f"🧾 **TX ID:** `{tx_id}`\n"
-            f"🆔 **Order ID:** `{order_id}`\n"
-            f"✅ **Status:** Auto Approved"
+        admin_text = MSG.ADMIN_NEW_STARS_PAYMENT.format(
+            user_name=full_name,
+            user_id=user_id,
+            username=username,
+            course_name=course["name"],
+            stars_amount=amount_paid,
+            tx_id=tx_id,
+            order_id=order_id,
         )
         for admin_id in ADMIN_IDS:
             try:
@@ -667,10 +618,8 @@ async def _raw_update_handler(
         try:
             await client.send_message(
                 chat_id=user_id,
-                text=(
-                    "⚠️ **Payment received কিন্তু activation এ সমস্যা হয়েছে।**\n\n"
-                    f"Transaction ID সহ admin কে জানান:\n"
-                    f"{ADMIN_USERNAME}"
+                text=MSG.ERROR_PAYMENT_PROCESSING.format(
+                    support=SUPPORT_USERNAME
                 ),
                 parse_mode=ParseMode.MARKDOWN,
             )
