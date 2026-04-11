@@ -1,30 +1,9 @@
 # db/database.py
 # Copyright @YourChannel
-
-"""
-MongoDB async database layer using motor.
-
-Collections:
-  courses  → all course documents
-  users    → registered users
-  orders   → purchase orders
-
-Course document schema:
-{
-    "_id"         : ObjectId,
-    "brand"       : str,
-    "batch"       : str,
-    "category"    : str,
-    "subject"     : str,
-    "name"        : str,
-    "description" : str,
-    "price"       : float,
-    "currency"    : str,
-    "file_id"     : str | None,
-    "created_at"  : datetime,
-    "is_active"   : bool,
-}
-"""
+# ─────────────────────────────────────────────────────────────
+# init_db() → main.py startup এ একবার call হয়
+# get_db()  → সব জায়গায় collection access এর জন্য
+# ─────────────────────────────────────────────────────────────
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -33,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import DATABASE_NAME, MONGO_URI
 
-# ─── Singleton ───────────────────────────────────────────────────────────────
+# ── Singleton client ──────────────────────────────────────────
 _client: Optional[AsyncIOMotorClient] = None
 
 
@@ -48,12 +27,39 @@ def get_db():
     return _get_client()[DATABASE_NAME]
 
 
-# ════════════════════════════════════════════════════════════════════════════
+async def init_db() -> None:
+    """
+    Startup এ একবার call হয়।
+    Index তৈরি করে, connection test করে।
+    নতুন collection এর index এখানে যোগ করো।
+    """
+    db = get_db()
+
+    # ── courses indexes ───────────────────────────────────────
+    await db.courses.create_index("brand")
+    await db.courses.create_index("is_active")
+    await db.courses.create_index([("brand", 1), ("batch", 1)])
+    await db.courses.create_index(
+        [("brand", 1), ("batch", 1), ("category", 1), ("subject", 1)]
+    )
+
+    # ── users indexes ─────────────────────────────────────────
+    await db.users.create_index("user_id", unique=True)
+
+    # ── orders indexes ────────────────────────────────────────
+    await db.orders.create_index("user_id")
+    await db.orders.create_index("status")
+    await db.orders.create_index("created_at")
+
+    from utils import LOGGER
+    LOGGER.info("✅ Database indexes initialized.")
+
+
+# ════════════════════════════════════════════════════════════
 #  COURSE OPERATIONS
-# ════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
 
 async def add_course(data: Dict[str, Any]) -> str:
-    """Insert new course. Returns inserted _id as string."""
     db = get_db()
     data.setdefault("created_at", datetime.utcnow())
     data.setdefault("is_active", True)
@@ -77,7 +83,8 @@ async def get_batches(brand: str) -> List[str]:
 async def get_categories(brand: str, batch: str) -> List[str]:
     db = get_db()
     return await db.courses.distinct(
-        "category", {"brand": brand, "batch": batch, "is_active": True}
+        "category",
+        {"brand": brand, "batch": batch, "is_active": True},
     )
 
 
@@ -131,9 +138,9 @@ async def get_all_courses_admin() -> List[Dict[str, Any]]:
     return await db.courses.find({}).to_list(length=None)
 
 
-# ════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
 #  USER OPERATIONS
-# ════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
 
 async def upsert_user(user_id: int, data: Dict[str, Any]) -> None:
     db = get_db()
@@ -157,9 +164,9 @@ async def get_all_users() -> List[Dict[str, Any]]:
     return await db.users.find({}).to_list(length=None)
 
 
-# ════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
 #  ORDER OPERATIONS
-# ════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
 
 async def create_order(order_data: Dict[str, Any]) -> str:
     db = get_db()
