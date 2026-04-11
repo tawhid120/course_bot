@@ -161,20 +161,21 @@ async def send_invite_to_user(
     """
     from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-    text = MSG.PAYMENT_APPROVED.format(
+    approval_message = MSG.PAYMENT_APPROVED.format(
         course_name=course["name"],
         brand=course["brand"],
         subject=course["subject"],
         order_id=order_id,
         support=SUPPORT_USERNAME,
     )
-    text = (
-        f"{text}\n\n"
-        f"{MSG.INVITE_LINK_MESSAGE.format(
-            course_name=course['name'],
-            order_id=order_id,
-            support=SUPPORT_USERNAME,
-        )}"
+    invite_message = MSG.INVITE_LINK_MESSAGE.format(
+        course_name=course["name"],
+        order_id=order_id,
+        support=SUPPORT_USERNAME,
+    )
+    message_text = (
+        f"{approval_message}\n\n"
+        f"{invite_message}"
     )
 
     kb = InlineKeyboardMarkup(
@@ -198,7 +199,7 @@ async def send_invite_to_user(
     try:
         await client.send_message(
             user_id,
-            text,
+            message_text,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=kb,
         )

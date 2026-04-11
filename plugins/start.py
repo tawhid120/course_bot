@@ -61,19 +61,19 @@ def setup(app: Client) -> None:
         )
 
         if is_admin(user.id):
-            text = MSG.WELCOME_ADMIN.format(
+            welcome_text = MSG.WELCOME_ADMIN.format(
                 bot_name=BOT_NAME,
                 name=user.first_name,
             )
         else:
-            text = MSG.WELCOME.format(
+            welcome_text = MSG.WELCOME.format(
                 bot_name=BOT_NAME,
                 name=user.first_name,
             )
 
         # তারপর inline menu
         await message.reply_text(
-            text,
+            welcome_text,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=main_menu_inline(),
             disable_web_page_preview=True,

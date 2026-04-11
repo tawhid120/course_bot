@@ -552,7 +552,7 @@ def setup(app: Client) -> None:
             await client.send_message(
                 order["user_id"],
                 MSG.PAYMENT_REJECTED.format(
-                    course_name=order.get("course_name", "your course"),
+                    course_name=order.get("course_name", "Unknown Course"),
                     order_id=order_id,
                     support=SUPPORT_USERNAME,
                 ),
