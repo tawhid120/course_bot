@@ -1,0 +1,40 @@
+# .dockerignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment secrets — NEVER bake into image
+.env
+*.env
+
+# Pyrogram session files
+*.session
+*.session-journal
+
+# Git
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Docker itself
+Dockerfile
+.dockerignore

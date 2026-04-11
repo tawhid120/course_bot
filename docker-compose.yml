@@ -1,0 +1,44 @@
+# docker-compose.yml
+# ─────────────────────────────────────────────────────────────
+# Local development with MongoDB included.
+# Usage:
+#   docker compose up --build
+#   docker compose down
+# ─────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      # Persist Pyrogram session across restarts
+      - ./sessions:/app/sessions
+    networks:
+      - botnet
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - botnet
+
+volumes:
+  mongo_data:
+
+networks:
+  botnet:
+    driver: bridge
