@@ -5,21 +5,21 @@
 Full Admin Panel plugin.
 
 Handles:
-  ─ admin:panel           → show panel
-  ─ admin:add_course      → start 9-step FSM
-  ─ admin:skip_file       → save course without image
-  ─ admin:list_courses    → paginated course list with Remove buttons
-  ─ admin:view:<id>       → single course detail (admin)
-  ─ admin:remove:<id>     → confirm removal
-  ─ admin:confirm_remove:<id> → deactivate course
-  ─ admin:orders          → list pending orders
-  ─ admin:order_detail:<id>   → order detail
-  ─ admin:approve_order:<id>  → approve + notify user
-  ─ admin:reject_order:<id>   → reject  + notify user
-  ─ admin:stats           → bot statistics
-  ─ admin:broadcast       → set FSM → broadcast message
-  ─ admin:cancel          → cancel FSM
-  ─ admin:close           → close panel
+  - admin:panel           → show panel
+  - admin:add_course      → start 9-step FSM
+  - admin:skip_file       → save course without image
+  - admin:list_courses    → paginated course list with Remove buttons
+  - admin:view:<id>       → single course detail (admin)
+  - admin:remove:<id>     → confirm removal
+  - admin:confirm_remove:<id> → deactivate course
+  - admin:orders          → list pending orders
+  - admin:order_detail:<id>   → order detail
+  - admin:approve_order:<id>  → approve + notify user
+  - admin:reject_order:<id>   → reject  + notify user
+  - admin:stats           → bot statistics
+  - admin:broadcast       → set FSM → broadcast message
+  - admin:cancel          → cancel FSM
+  - admin:close           → close panel
 
 All text inputs in FSM are handled by the on_message handler
 at the bottom of this file.
@@ -78,13 +78,11 @@ async def _persist_course(data: dict) -> str:
     )
 
 
-async def _do_broadcast(
-    client: Client, message: Message, uid: int
-) -> None:
+async def _do_broadcast(client: Client, message: Message, uid: int) -> None:
     """Broadcast a message to all registered users."""
     all_users = await db.get_all_users()
-    sent      = 0
-    failed    = 0
+    sent = 0
+    failed = 0
 
     status = await message.reply_text(
         f"📢 Broadcasting to **{len(all_users)}** users… please wait.",
@@ -118,9 +116,7 @@ async def _do_broadcast(
             failed += 1
 
     clear_state(uid)
-    LOGGER.info(
-        f"[Broadcast] admin={uid} sent={sent} failed={failed}"
-    )
+    LOGGER.info(f"[Broadcast] admin={uid} sent={sent} failed={failed}")
 
     await status.edit_text(
         f"✅ **Broadcast Complete!**\n\n"
@@ -131,14 +127,19 @@ async def _do_broadcast(
     )
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  SETUP — plugins/__init__.py এর _PLUGIN_SETUPS থেকে call হয়
+# ════════════════════════════════════════════════════════════════════════════
+
 def setup(app: Client) -> None:
     """
-    plugins/__init__.py এর _PLUGIN_SETUPS list থেকে call হয়।
-    সব handler এখানে register হয়।
+    Register all admin panel handlers on the Pyrogram Client.
+    Called once from plugins/__init__.py → _PLUGIN_SETUPS.
     """
-    # ════════════════════════════════════════════════════════════════════════════
+
+    # ════════════════════════════════════════════════════════════════════════
     #  PANEL & CANCEL
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:panel$"))
     @admin_callback_required
@@ -151,7 +152,6 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
     @app.on_callback_query(filters.regex(r"^admin:close$"))
     @admin_callback_required
     async def cb_admin_close(client: Client, callback: CallbackQuery):
@@ -162,7 +162,6 @@ def setup(app: Client) -> None:
             reply_markup=main_menu_inline(),
         )
         await callback.answer("Panel closed.")
-
 
     @app.on_callback_query(filters.regex(r"^admin:cancel$"))
     @admin_callback_required
@@ -175,10 +174,9 @@ def setup(app: Client) -> None:
         )
         await callback.answer("Cancelled.")
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  ADD COURSE — STEP 1 trigger
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:add_course$"))
     @admin_callback_required
@@ -193,10 +191,9 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  SKIP FILE
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:skip_file$"))
     @admin_callback_required
@@ -225,13 +222,11 @@ def setup(app: Client) -> None:
             reply_markup=admin_panel_inline(),
         )
         await callback.answer("Course saved!")
-
         LOGGER.info(f"[AddCourse] admin={uid} course_id={course_id} (no image)")
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  LIST COURSES
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:list_courses$"))
     @admin_callback_required
@@ -255,16 +250,15 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  VIEW SINGLE COURSE (admin detail)
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:view:([a-f0-9]{24})$"))
     @admin_callback_required
     async def cb_admin_view(client: Client, callback: CallbackQuery):
         course_id = callback.matches[0].group(1)
-        course    = await db.get_course_by_id(course_id)
+        course = await db.get_course_by_id(course_id)
 
         if not course:
             await callback.answer("Course not found.", show_alert=True)
@@ -306,16 +300,15 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  REMOVE COURSE
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:remove:([a-f0-9]{24})$"))
     @admin_callback_required
     async def cb_remove_course(client: Client, callback: CallbackQuery):
         course_id = callback.matches[0].group(1)
-        course    = await db.get_course_by_id(course_id)
+        course = await db.get_course_by_id(course_id)
 
         if not course:
             await callback.answer("Course not found.", show_alert=True)
@@ -332,14 +325,13 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
     @app.on_callback_query(
         filters.regex(r"^admin:confirm_remove:([a-f0-9]{24})$")
     )
     @admin_callback_required
     async def cb_confirm_remove(client: Client, callback: CallbackQuery):
         course_id = callback.matches[0].group(1)
-        ok        = await db.deactivate_course(course_id)
+        ok = await db.deactivate_course(course_id)
 
         if ok:
             LOGGER.info(
@@ -359,10 +351,9 @@ def setup(app: Client) -> None:
                 "❌ Failed to remove course.", show_alert=True
             )
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  PENDING ORDERS
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:orders$"))
     @admin_callback_required
@@ -380,7 +371,7 @@ def setup(app: Client) -> None:
 
         rows = []
         for o in orders:
-            oid   = str(o["_id"])
+            oid = str(o["_id"])
             label = (
                 f"#{oid[-6:]} — "
                 f"{o.get('course_name', '?')} — "
@@ -410,7 +401,6 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
     @app.on_callback_query(
         filters.regex(r"^admin:order_detail:([a-f0-9]{24})$")
     )
@@ -427,17 +417,16 @@ def setup(app: Client) -> None:
         await callback.message.edit_text(
             f"🧾 **Order Details**\n\n"
             f"🆔 Order ID: `{order_id}`\n"
-            f"👤 User: {order.get('user_name','?')} "
-            f"(`{order.get('user_id','?')}`)\n"
-            f"🎓 Course: {order.get('course_name','?')}\n"
-            f"💰 Amount: {order.get('currency','')} "
-            f"{order.get('amount','?')}\n"
-            f"📌 Status: {order.get('status','?').title()}",
+            f"👤 User: {order.get('user_name', '?')} "
+            f"(`{order.get('user_id', '?')}`)\n"
+            f"🎓 Course: {order.get('course_name', '?')}\n"
+            f"💰 Amount: {order.get('currency', '')} "
+            f"{order.get('amount', '?')}\n"
+            f"📌 Status: {order.get('status', '?').title()}",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=admin_order_actions_inline(order_id),
         )
         await callback.answer()
-
 
     @app.on_callback_query(
         filters.regex(r"^admin:approve_order:([a-f0-9]{24})$")
@@ -464,12 +453,11 @@ def setup(app: Client) -> None:
             reply_markup=admin_back_panel_inline(),
         )
 
-        # Notify user
         try:
             await client.send_message(
                 order["user_id"],
                 f"🎉 **Payment Approved!**\n\n"
-                f"Your payment for **{order.get('course_name','your course')}** "
+                f"Your payment for **{order.get('course_name', 'your course')}** "
                 f"has been verified!\n\n"
                 f"🆔 Order ID: `{order_id}`\n\n"
                 f"You now have access. Thank you! 🙏",
@@ -479,7 +467,6 @@ def setup(app: Client) -> None:
             LOGGER.warning(f"Could not notify user {order['user_id']}: {e}")
 
         await callback.answer("Order approved!")
-
 
     @app.on_callback_query(
         filters.regex(r"^admin:reject_order:([a-f0-9]{24})$")
@@ -506,12 +493,11 @@ def setup(app: Client) -> None:
             reply_markup=admin_back_panel_inline(),
         )
 
-        # Notify user
         try:
             await client.send_message(
                 order["user_id"],
                 f"❌ **Payment Rejected**\n\n"
-                f"Your payment for **{order.get('course_name','your course')}** "
+                f"Your payment for **{order.get('course_name', 'your course')}** "
                 f"could not be verified.\n\n"
                 f"🆔 Order ID: `{order_id}`\n\n"
                 f"Please contact support for help.",
@@ -522,21 +508,22 @@ def setup(app: Client) -> None:
 
         await callback.answer("Order rejected.")
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  STATS
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:stats$"))
     @admin_callback_required
     async def cb_stats(client: Client, callback: CallbackQuery):
-        all_users   = await db.get_all_users()
+        all_users = await db.get_all_users()
         all_courses = await db.get_all_courses_admin()
-        active_c    = [c for c in all_courses if c.get("is_active")]
-        pending_o   = await db.get_all_pending_orders()
-        db_inst     = db.get_db()
-        total_o     = await db_inst.orders.count_documents({})
-        approved_o  = await db_inst.orders.count_documents({"status": "approved"})
+        active_c = [c for c in all_courses if c.get("is_active")]
+        pending_o = await db.get_all_pending_orders()
+        db_inst = db.get_db()
+        total_o = await db_inst.orders.count_documents({})
+        approved_o = await db_inst.orders.count_documents(
+            {"status": "approved"}
+        )
 
         await callback.message.edit_text(
             f"📊 **Bot Statistics**\n\n"
@@ -551,10 +538,9 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  BROADCAST
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_callback_query(filters.regex(r"^admin:broadcast$"))
     @admin_callback_required
@@ -569,16 +555,13 @@ def setup(app: Client) -> None:
         )
         await callback.answer()
 
-
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
     #  FSM MESSAGE HANDLER (Admin text/media input)
-    # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════
 
     @app.on_message(
         filters.private
-        & ~filters.command(
-            ["start", "admin", "cancel", "help"]
-        ),
+        & ~filters.command(["start", "admin", "cancel", "help"]),
         group=10,
     )
     async def admin_fsm_handler(client: Client, message: Message):
@@ -588,7 +571,7 @@ def setup(app: Client) -> None:
 
         state = get_state(uid)
 
-        # ── Non-admin FSM state ── ignore silently
+        # Non-admin FSM state → ignore silently
         if state not in (
             States.ADMIN_ADD_BRAND,
             States.ADMIN_ADD_BATCH,
@@ -603,7 +586,7 @@ def setup(app: Client) -> None:
         ):
             return
 
-        # ── Step 1: Brand ─────────────────────────────────────────────────────
+        # ── Step 1: Brand ─────────────────────────────────────────────────
         if state == States.ADMIN_ADD_BRAND:
             val = message.text.strip() if message.text else None
             if not val:
@@ -623,7 +606,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 2: Batch ─────────────────────────────────────────────────────
+        # ── Step 2: Batch ─────────────────────────────────────────────────
         elif state == States.ADMIN_ADD_BATCH:
             val = message.text.strip() if message.text else None
             if not val:
@@ -643,7 +626,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 3: Category ──────────────────────────────────────────────────
+        # ── Step 3: Category ──────────────────────────────────────────────
         elif state == States.ADMIN_ADD_CATEGORY:
             val = message.text.strip() if message.text else None
             if not val:
@@ -663,7 +646,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 4: Subject ───────────────────────────────────────────────────
+        # ── Step 4: Subject ───────────────────────────────────────────────
         elif state == States.ADMIN_ADD_SUBJECT:
             val = message.text.strip() if message.text else None
             if not val:
@@ -683,7 +666,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 5: Course Name ───────────────────────────────────────────────
+        # ── Step 5: Course Name ───────────────────────────────────────────
         elif state == States.ADMIN_ADD_NAME:
             val = message.text.strip() if message.text else None
             if not val:
@@ -703,7 +686,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 6: Description ───────────────────────────────────────────────
+        # ── Step 6: Description ───────────────────────────────────────────
         elif state == States.ADMIN_ADD_DESC:
             val = message.text.strip() if message.text else None
             if not val:
@@ -723,7 +706,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 7: Price ─────────────────────────────────────────────────────
+        # ── Step 7: Price ─────────────────────────────────────────────────
         elif state == States.ADMIN_ADD_PRICE:
             raw = message.text.strip() if message.text else ""
             try:
@@ -746,11 +729,9 @@ def setup(app: Client) -> None:
                 reply_markup=admin_cancel_inline(),
             )
 
-        # ── Step 8: Currency ──────────────────────────────────────────────────
+        # ── Step 8: Currency ──────────────────────────────────────────────
         elif state == States.ADMIN_ADD_CURRENCY:
-            val = (
-                message.text.strip().upper() if message.text else None
-            )
+            val = message.text.strip().upper() if message.text else None
             if not val:
                 await message.reply_text(
                     "⚠️ Please send the **Currency Code**.",
@@ -768,7 +749,7 @@ def setup(app: Client) -> None:
                 reply_markup=admin_skip_inline(),
             )
 
-        # ── Step 9: File / Photo ──────────────────────────────────────────────
+        # ── Step 9: File / Photo ──────────────────────────────────────────
         elif state == States.ADMIN_ADD_FILE:
             file_id = None
             if message.photo:
@@ -802,6 +783,6 @@ def setup(app: Client) -> None:
                 reply_markup=admin_panel_inline(),
             )
 
-        # ── Broadcast ─────────────────────────────────────────────────────────
+        # ── Broadcast ─────────────────────────────────────────────────────
         elif state == States.ADMIN_BROADCAST:
             await _do_broadcast(client, message, uid)
