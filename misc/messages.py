@@ -61,13 +61,13 @@ class MSG:
         "👋 **{bot_name} তে স্বাগতম, {name}!**\n\n"
         "🎓 আমাদের Premium Course গুলো Browse করুন\n"
         "এবং সহজেই কিনুন।\n\n"
-        "🔑 *আপনি একজন Admin।*\n"
+        "🔑 **আপনি একজন Admin।**\n"
         "**🛠 Admin Panel** বাটনে ক্লিক করুন।\n\n"
         "নিচের বাটনে ক্লিক করে শুরু করুন 👇"
     )
 
     KEYBOARD_LOADED = (
-        "_Keyboard লোড হয়েছে।_"
+        "__Keyboard লোড হয়েছে।__"
     )
 
     # ══════════════════════════════════════════════════════════
@@ -106,7 +106,7 @@ class MSG:
         "• **🛒 Buy Now** তে ক্লিক করুন\n"
         "• Payment করুন\n"
         "• Admin verify করে Access দেবেন\n\n"
-        "━━━━━━━���━━━━━━━━━━━━━\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
         "💬 **সাহায্যের জন্য:**\n"
         "{support}\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -133,28 +133,28 @@ class MSG:
 
     SELECT_BATCH = (
         "📦 **Batch বেছে নিন**\n\n"
-        "🏷 *Brand:* `{brand}`\n\n"
+        "🏷 __Brand:__ `{brand}`\n\n"
         "কোন Batch এর Course দেখতে চান?"
     )
 
     SELECT_CATEGORY = (
         "📂 **Category বেছে নিন**\n\n"
-        "🏷 *Brand:* `{brand}`\n"
-        "📦 *Batch:* `{batch}`\n\n"
+        "🏷 __Brand:__ `{brand}`\n"
+        "📦 __Batch:__ `{batch}`\n\n"
         "কোন Category দেখতে চান?"
     )
 
     SELECT_SUBJECT = (
         "📖 **Subject বেছে নিন**\n\n"
-        "🏷 *Brand:* `{brand}`\n"
-        "📦 *Batch:* `{batch}`\n"
-        "📂 *Category:* `{category}`\n\n"
+        "🏷 __Brand:__ `{brand}`\n"
+        "📦 __Batch:__ `{batch}`\n"
+        "📂 __Category:__ `{category}`\n\n"
         "কোন Subject এর Course দেখতে চান?"
     )
 
     SELECT_COURSE = (
         "🎓 **Available Courses**\n\n"
-        "*{brand}* › *{batch}* › *{category}* › *{subject}*\n\n"
+        "**{brand}** › **{batch}** › **{category}** › **{subject}**\n\n"
         "একটা Course বেছে নিন 👇"
     )
 
@@ -180,10 +180,10 @@ class MSG:
 
     COURSE_DETAIL = (
         "🎓 **{name}**\n\n"
-        "🏷 *Brand:*    `{brand}`\n"
-        "📦 *Batch:*    `{batch}`\n"
-        "📂 *Category:* `{category}`\n"
-        "📖 *Subject:*  `{subject}`\n\n"
+        "🏷 __Brand:__    `{brand}`\n"
+        "📦 __Batch:__    `{batch}`\n"
+        "📂 __Category:__ `{category}`\n"
+        "📖 __Subject:__  `{subject}`\n\n"
         "📝 **বিস্তারিত:**\n"
         "{description}\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
