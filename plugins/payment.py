@@ -1,25 +1,15 @@
 # plugins/payment.py
 # Copyright @YourChannel
 # ─────────────────────────────────────────────────────────────
-# Course Payment System
+# Payment + Proof Submission System
 #
-# Flow:
-#   course detail → Buy Now → Payment Methods (buttons)
-#     ├── ⭐ Telegram Stars  → auto invoice → auto activate
-#     ├── 📲 bKash           → instructions → admin verify
-#     ├── 📲 Nagad           → instructions → admin verify
-#     ├── 🪙 Binance USDT    → instructions → admin verify
-#     └── 💬 Contact Admin   → direct link  → manual
-#
-# Callback data pattern:
-#   cpay:method:course_id
-#   e.g. cpay:stars:64f1a2b3c4d5e6f7a8b9c0d1
-#        cpay:bkash:64f1a2b3c4d5e6f7a8b9c0d1
-#        cpay:nagad:64f1a2b3c4d5e6f7a8b9c0d1
-#        cpay:crypto:64f1a2b3c4d5e6f7a8b9c0d1
-#        cpay:admin:64f1a2b3c4d5e6f7a8b9c0d1
-#        cpay:done:course_id        (manual payment submitted)
-#        cpay:back:course_id        (back to method selection)
+# Flow (Manual Payment):
+#   Buy Now → Payment Method
+#     → bKash/Nagad/Crypto instructions
+#       → Phone Number দাও (optional)
+#         → Screenshot/Proof পাঠাও
+#           → Admin কে notify করো
+#             → Admin Approve/Reject করে
 # ─────────────────────────────────────────────────────────────
 
 import hashlib
@@ -30,7 +20,10 @@ from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.enums import ParseMode
 from pyrogram.handlers import RawUpdateHandler
-from pyrogram.raw.functions.messages import SendMedia, SetBotPrecheckoutResults
+from pyrogram.raw.functions.messages import (
+    SendMedia,
+    SetBotPrecheckoutResults,
+)
 from pyrogram.raw.types import (
     DataJSON,
     Invoice,
@@ -64,222 +57,73 @@ from config import (
     NAGAD_NUMBER,
     SUPPORT_USERNAME,
 )
-from misc.messages import MSG
-from misc import (
-    States,
-    clear_state,
-    course_detail_inline,
-    main_menu_inline,
+from misc import States, clear_state, get_data, get_state, main_menu_inline, set_state, update_data
+from misc.keyboards import (
+    admin_proof_actions_kb,
+    payment_methods_kb,
+    proof_cancel_kb,
+    proof_phone_kb,
+    support_only_kb,
 )
+from misc.messages import MSG
 from utils import LOGGER
 
-# ═════════════════════════════════════════════════════════════
-#  In-memory invoice tracker (prevent duplicate invoices)
-# ═════════════════════════════════════════════════════════════
-_active_invoices: dict = {}
+# ── In-memory stores ──────────────────────────────────────────
+_active_invoices: dict  = {}
+_pending_methods: dict  = {}
+_proof_state: dict      = {}
+# Structure: { user_id: { course_id, method, phone } }
 
 
 # ═════════════════════════════════════════════════════════════
-#  KEYBOARDS
-# ═════════════════════════════════════════════════════════════
-
-def payment_methods_kb(course_id: str) -> InlineKeyboardMarkup:
-    """
-    সব payment method বাটন হিসেবে দেখায়।
-    প্রতিটা বাটন আলাদা method এর জন্য।
-    """
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "⭐ Telegram Stars — তাৎক্ষণিক",
-                    callback_data=f"cpay:stars:{course_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "📲 bKash",
-                    callback_data=f"cpay:bkash:{course_id}",
-                ),
-                InlineKeyboardButton(
-                    "📲 Nagad",
-                    callback_data=f"cpay:nagad:{course_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    "🪙 Binance / USDT (TRC20)",
-                    callback_data=f"cpay:crypto:{course_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "💬 সরাসরি Admin কে Message করুন",
-                    callback_data=f"cpay:admin:{course_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔙 Course এ ফিরে যাও",
-                    callback_data=f"course:{course_id}",
-                )
-            ],
-        ]
-    )
-
-
-def after_manual_payment_kb(course_id: str) -> InlineKeyboardMarkup:
-    """Manual payment submit করার পর দেখায়।"""
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "✅ Payment করেছি — Confirm করুন",
-                    callback_data=f"cpay:done:{course_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔙 Payment Method বেছে নিন",
-                    callback_data=f"cpay:back:{course_id}",
-                )
-            ],
-        ]
-    )
-
-
-def admin_order_kb(order_id: str) -> InlineKeyboardMarkup:
-    """Admin দের জন্য order approve/reject বাটন।"""
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "✅ Approve করুন",
-                    callback_data=f"admin:approve_order:{order_id}",
-                ),
-                InlineKeyboardButton(
-                    "❌ Reject করুন",
-                    callback_data=f"admin:reject_order:{order_id}",
-                ),
-            ]
-        ]
-    )
-
-
-# ═════════════════════════════════════════════════════════════
-#  TEXT TEMPLATES
+#  TEXT HELPERS
 # ═════════════════════════════════════════════════════════════
 
 def _payment_menu_text(course: dict) -> str:
     return MSG.PAYMENT_METHOD_SELECT.format(
-        name=course["name"],
-        currency=course["currency"],
-        price=course["price"],
-        support=SUPPORT_USERNAME,
+        name     = course["name"],
+        currency = course["currency"],
+        price    = course["price"],
+        support  = SUPPORT_USERNAME,
     )
 
 
 def _bkash_text(course: dict, user_id: int) -> str:
     return MSG.PAYMENT_BKASH.format(
-        course_name=course["name"],
-        price=course["price"],
-        currency=course["currency"],
-        bkash_number=BKASH_NUMBER,
-        user_id=user_id,
-        support=SUPPORT_USERNAME,
+        course_name  = course["name"],
+        price        = course["price"],
+        currency     = course["currency"],
+        bkash_number = BKASH_NUMBER,
+        user_id      = user_id,
+        support      = SUPPORT_USERNAME,
     )
 
 
 def _nagad_text(course: dict, user_id: int) -> str:
     return MSG.PAYMENT_NAGAD.format(
-        course_name=course["name"],
-        price=course["price"],
-        currency=course["currency"],
-        nagad_number=NAGAD_NUMBER,
-        user_id=user_id,
-        support=SUPPORT_USERNAME,
+        course_name  = course["name"],
+        price        = course["price"],
+        currency     = course["currency"],
+        nagad_number = NAGAD_NUMBER,
+        user_id      = user_id,
+        support      = SUPPORT_USERNAME,
     )
 
 
 def _crypto_text(course: dict, user_id: int) -> str:
     return MSG.PAYMENT_CRYPTO.format(
-        course_name=course["name"],
-        price=course["price"],
-        currency=course["currency"],
-        binance_uid=BINANCE_UID,
-        binance_address=BINANCE_ADDRESS,
-        user_id=user_id,
-        support=SUPPORT_USERNAME,
-    )
-
-
-def _admin_contact_text(course: dict) -> str:
-    return MSG.PAYMENT_ADMIN_CONTACT.format(
-        course_name=course["name"],
-        currency=course["currency"],
-        price=course["price"],
-        support=SUPPORT_USERNAME,
-    )
-
-
-def _stars_success_text(
-    course: dict,
-    user_name: str,
-    amount: int,
-    tx_id: str,
-) -> str:
-    return MSG.PAYMENT_STARS_SUCCESS.format(
-        user_name=user_name,
-        course_name=course["name"],
-        stars_amount=amount,
-        tx_id=tx_id,
-        support=SUPPORT_USERNAME,
-    )
-
-
-def _manual_submitted_text(
-    course: dict, method: str, user_id: int
-) -> str:
-    method_names = {
-        "bkash":  "bKash",
-        "nagad":  "Nagad",
-        "crypto": "Binance / USDT",
-    }
-    return MSG.PAYMENT_SUBMITTED.format(
-        course_name=course["name"],
-        method=method_names.get(method, method),
-        user_id=user_id,
-        support=SUPPORT_USERNAME,
-    )
-
-
-def _admin_manual_notify(
-    course: dict,
-    user_id: int,
-    username: str,
-    user_name: str,
-    method: str,
-    order_id: str,
-) -> str:
-    method_names = {
-        "bkash":  "📲 bKash",
-        "nagad":  "📲 Nagad",
-        "crypto": "🪙 Binance / USDT",
-    }
-    return MSG.ADMIN_NEW_MANUAL_PAYMENT.format(
-        user_name=user_name,
-        user_id=user_id,
-        username=username,
-        course_name=course["name"],
-        currency=course["currency"],
-        price=course["price"],
-        method=method_names.get(method, method),
-        order_id=order_id,
+        course_name     = course["name"],
+        price           = course["price"],
+        currency        = course["currency"],
+        binance_uid     = BINANCE_UID,
+        binance_address = BINANCE_ADDRESS,
+        user_id         = user_id,
+        support         = SUPPORT_USERNAME,
     )
 
 
 # ═════════════════════════════════════════════════════════════
-#  Stars Invoice Generator
+#  STARS INVOICE
 # ═════════════════════════════════════════════════════════════
 
 async def _send_stars_invoice(
@@ -289,11 +133,6 @@ async def _send_stars_invoice(
     course: dict,
     course_id: str,
 ) -> None:
-    """
-    Telegram Stars invoice generate করে send করে।
-    Currency: XTR (Telegram Stars)
-    Amount: course price (INR/BDT এর পরিবর্তে Stars সংখ্যা)
-    """
     if _active_invoices.get(user_id):
         await client.send_message(
             chat_id,
@@ -302,10 +141,6 @@ async def _send_stars_invoice(
         )
         return
 
-    # Stars amount = price কে integer হিসেবে use করো
-    # যদি currency INR/BDT হয় তাহলে conversion করো
-    # এখানে আমরা price কে সরাসরি stars হিসেবে use করছি
-    # Admin কোর্স add করার সময় currency="XTR" দিলে সরাসরি কাজ করবে
     try:
         stars_amount = int(float(course["price"]))
     except (ValueError, TypeError):
@@ -321,7 +156,6 @@ async def _send_stars_invoice(
 
     try:
         _active_invoices[user_id] = True
-
         ts          = int(time.time())
         unique      = str(uuid.uuid4())[:8]
         payload_str = (
@@ -330,7 +164,9 @@ async def _send_stars_invoice(
         )
         random_id = (
             int(
-                hashlib.sha256(payload_str.encode()).hexdigest(),
+                hashlib.sha256(
+                    payload_str.encode()
+                ).hexdigest(),
                 16,
             )
             % (2**63)
@@ -346,15 +182,13 @@ async def _send_stars_invoice(
             ],
             max_tip_amount=0,
             suggested_tip_amounts=[],
-            recurring=False,
-            test=False,
+            recurring=False, test=False,
             name_requested=False,
             phone_requested=False,
             email_requested=False,
             shipping_address_requested=False,
             flexible=False,
         )
-
         media = InputMediaInvoice(
             title=f"🎓 {course['name']}",
             description=(
@@ -368,7 +202,6 @@ async def _send_stars_invoice(
             provider="STARS",
             provider_data=DataJSON(data="{}"),
         )
-
         markup = ReplyInlineMarkup(
             rows=[
                 KeyboardButtonRow(
@@ -396,8 +229,8 @@ async def _send_stars_invoice(
             chat_id,
             loading.id,
             MSG.STARS_INVOICE_READY.format(
-                course_name=course["name"],
-                stars_amount=stars_amount,
+                course_name  = course["name"],
+                stars_amount = stars_amount,
             ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(
@@ -412,15 +245,10 @@ async def _send_stars_invoice(
             ),
         )
 
-        LOGGER.info(
-            f"[Stars] Invoice sent | "
-            f"user={user_id} course={course['name']} "
-            f"stars={stars_amount}"
-        )
-
     except Exception as e:
         LOGGER.error(
-            f"[Stars] Invoice failed | user={user_id} error={e}"
+            f"[Stars] Invoice failed | "
+            f"user={user_id} error={e}"
         )
         await client.edit_message_text(
             chat_id,
@@ -436,14 +264,13 @@ async def _send_stars_invoice(
 
 
 # ═════════════════════════════════════════════════════════════
-#  Raw Update Handler — Stars Pre-checkout & Payment Success
+#  RAW UPDATE — Stars Pre-checkout & Success
 # ═════════════════════════════════════════════════════════════
 
 async def _raw_update_handler(
     client: Client, update, users, chats
 ) -> None:
 
-    # ── Pre-checkout approve ───────────────────────────────────
     if isinstance(update, UpdateBotPrecheckoutQuery):
         try:
             await client.invoke(
@@ -452,11 +279,6 @@ async def _raw_update_handler(
                     success=True,
                 )
             )
-            LOGGER.info(
-                f"[PreCheckout] Approved "
-                f"query_id={update.query_id} "
-                f"user={update.user_id}"
-            )
         except Exception as e:
             LOGGER.error(f"[PreCheckout] Failed: {e}")
             try:
@@ -464,14 +286,13 @@ async def _raw_update_handler(
                     SetBotPrecheckoutResults(
                         query_id=update.query_id,
                         success=False,
-                        error="Payment processing error. Try again.",
+                        error="Payment error. Try again.",
                     )
                 )
             except Exception:
                 pass
         return
 
-    # ── Payment Success ────────────────────────────────────────
     if not (
         isinstance(update, UpdateNewMessage)
         and isinstance(update.message, MessageService)
@@ -484,7 +305,6 @@ async def _raw_update_handler(
     payment = update.message.action
 
     try:
-        # ── Resolve user_id ───────────────────────────────────
         user_id = None
         if update.message.from_id and hasattr(
             update.message.from_id, "user_id"
@@ -494,10 +314,8 @@ async def _raw_update_handler(
             positives = [u for u in users if u > 0]
             user_id   = positives[0] if positives else None
         if not user_id:
-            LOGGER.error("[Payment] Cannot resolve user_id")
             return
 
-        # ── Resolve chat_id ───────────────────────────────────
         pid = update.message.peer_id
         if isinstance(pid, PeerUser):
             chat_id = pid.user_id
@@ -508,35 +326,24 @@ async def _raw_update_handler(
         else:
             chat_id = user_id
 
-        # ── Parse payload ─────────────────────────────────────
-        payload = payment.payload.decode()
-        # format: course_{course_id}_{user_id}_{stars}_{ts}_{uid}
-        parts = payload.split("_")
+        payload   = payment.payload.decode()
+        parts     = payload.split("_")
         if len(parts) < 3 or parts[0] != "course":
-            LOGGER.error(
-                f"[Payment] Unknown payload: {payload}"
-            )
             return
 
         course_id   = parts[1]
         tx_id       = payment.charge.id
         amount_paid = payment.total_amount
 
-        # ── Get course from DB ─────────────────────────────────
         course = await db.get_course_by_id(course_id)
         if not course:
-            LOGGER.error(
-                f"[Payment] Course not found: {course_id}"
-            )
             return
 
-        # ── User info ─────────────────────────────────────────
         user_info = users.get(user_id)
         full_name = (
             f"{user_info.first_name} "
-            f"{getattr(user_info, 'last_name', '') or ''}".strip()
-            if user_info
-            else "User"
+            f"{getattr(user_info,'last_name','') or ''}".strip()
+            if user_info else "User"
         )
         username = (
             f"@{user_info.username}"
@@ -544,56 +351,65 @@ async def _raw_update_handler(
             else "@N/A"
         )
 
-        LOGGER.info(
-            f"[Payment] ⭐ Stars received | "
-            f"user={user_id} course={course['name']} "
-            f"amount={amount_paid} tx={tx_id}"
-        )
+        # ── Membership ID generate করো ────────────────────────
+        membership_id = await db.get_unique_membership_id()
 
-        # ── Create approved order in DB ───────────────────────
+        # ── Order create করো ──────────────────────────────────
         order_id = await db.create_order(
             {
-                "user_id":     user_id,
-                "user_name":   full_name,
-                "username":    username,
-                "course_id":   course_id,
-                "course_name": course["name"],
-                "amount":      amount_paid,
-                "currency":    "XTR",
-                "method":      "telegram_stars",
-                "tx_id":       tx_id,
-                "status":      "approved",  # Stars = instant approve
+                "user_id":       user_id,
+                "user_name":     full_name,
+                "username":      username,
+                "course_id":     course_id,
+                "course_name":   course["name"],
+                "amount":        amount_paid,
+                "currency":      "XTR",
+                "method":        "telegram_stars",
+                "tx_id":         tx_id,
+                "status":        "approved",
+                "membership_id": membership_id,
             }
         )
 
-        # ── Notify user ───────────────────────────────────────
-        try:
-            await client.send_message(
-                chat_id=chat_id,
-                text=MSG.PAYMENT_STARS_SUCCESS.format(
-                    user_name=full_name,
-                    course_name=course["name"],
-                    stars_amount=amount_paid,
-                    tx_id=tx_id,
-                    support=SUPPORT_USERNAME,
-                ),
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=main_menu_inline(),
-            )
-        except Exception as e:
-            LOGGER.error(
-                f"[Payment] User notify failed: {e}"
-            )
+        # ── User কে Success message পাঠাও ─────────────────────
+        await client.send_message(
+            chat_id=chat_id,
+            text=MSG.PAYMENT_STARS_SUCCESS.format(
+                user_name    = full_name,
+                course_name  = course["name"],
+                stars_amount = amount_paid,
+                tx_id        = tx_id,
+                support      = SUPPORT_USERNAME,
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
-        # ── Notify admins ─────────────────────────────────────
+        # ── Membership Card পাঠাও ─────────────────────────────
+        await client.send_message(
+            chat_id=chat_id,
+            text=MSG.MEMBERSHIP_CARD_NO_PHONE.format(
+                membership_id = membership_id,
+                name          = full_name,
+                course_name   = course["name"],
+                brand         = course["brand"],
+                currency      = "Stars",
+                price         = amount_paid,
+                date          = datetime.utcnow().strftime(
+                    "%d %B %Y"
+                ),
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
+        # ── Admin notify করো ──────────────────────────────────
         admin_text = MSG.ADMIN_NEW_STARS_PAYMENT.format(
-            user_name=full_name,
-            user_id=user_id,
-            username=username,
-            course_name=course["name"],
-            stars_amount=amount_paid,
-            tx_id=tx_id,
-            order_id=order_id,
+            user_name    = full_name,
+            user_id      = user_id,
+            username     = username,
+            course_name  = course["name"],
+            stars_amount = amount_paid,
+            tx_id        = tx_id,
+            order_id     = order_id,
         )
         for admin_id in ADMIN_IDS:
             try:
@@ -602,19 +418,20 @@ async def _raw_update_handler(
                     admin_text,
                     parse_mode=ParseMode.MARKDOWN,
                 )
-            except Exception as e:
-                LOGGER.warning(
-                    f"[Payment] Admin {admin_id} notify failed: {e}"
-                )
+            except Exception:
+                pass
 
-        LOGGER.info(
-            f"[Payment] ✅ Auto-approved | "
-            f"user={user_id} course={course['name']} "
-            f"order={order_id}"
-        )
+        # ── OTL Generate & Send ────────────────────────────────
+        try:
+            from plugins.group_manager import approve_and_send_link
+            await approve_and_send_link(
+                client, order_id, ADMIN_IDS[0]
+            )
+        except Exception as e:
+            LOGGER.warning(f"[Stars] OTL failed: {e}")
 
     except Exception as e:
-        LOGGER.error(f"[Payment] Unhandled error: {e}")
+        LOGGER.error(f"[Stars] Payment error: {e}")
         try:
             await client.send_message(
                 chat_id=user_id,
@@ -632,31 +449,37 @@ async def _raw_update_handler(
 # ═════════════════════════════════════════════════════════════
 
 def setup(app: Client) -> None:
-    """
-    plugins/__init__.py এর _PLUGIN_SETUPS থেকে call হয়।
-    সব payment handler এখানে register হয়।
-    """
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — Buy Now → Payment Method Screen
+    #  Buy Now → Payment Method Screen
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
         filters.regex(r"^buy:([a-f0-9]{24})$")
     )
-    async def cb_buy_now(client: Client, callback: CallbackQuery):
-        """
-        course_flow.py এর buy: callback কে override করে।
-        এখন payment method selection screen দেখাবে।
-        """
+    async def cb_buy_now(
+        client: Client, callback: CallbackQuery
+    ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
+
+        # Duplicate purchase check
+        if await db.check_user_owns_course(
+            callback.from_user.id, course_id
+        ):
+            await callback.message.edit_text(
+                MSG.ALREADY_PURCHASED.format(
+                    name    = course["name"],
+                    support = SUPPORT_USERNAME,
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=main_menu_inline(),
+            )
+            return await callback.answer()
 
         await callback.message.edit_text(
             _payment_menu_text(course),
@@ -666,7 +489,7 @@ def setup(app: Client) -> None:
         await callback.answer()
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:back → Payment Method Screen এ ফিরুন
+    #  Back to Payment Methods
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -677,12 +500,16 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
+        # proof state clear করো
+        uid = callback.from_user.id
+        _proof_state.pop(uid, None)
+        _pending_methods.pop(
+            f"{uid}:{course_id}", None
+        )
 
         await callback.message.edit_text(
             _payment_menu_text(course),
@@ -692,7 +519,7 @@ def setup(app: Client) -> None:
         await callback.answer()
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:stars → Telegram Stars Invoice
+    #  Stars Payment
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -703,26 +530,21 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
-
-        uid     = callback.from_user.id
-        chat_id = callback.message.chat.id
-
-        await callback.answer(
-            f"⭐ Stars invoice তৈরি হচ্ছে..."
-        )
-
+        await callback.answer("⭐ Invoice তৈরি হচ্ছে...")
         await _send_stars_invoice(
-            client, chat_id, uid, course, course_id
+            client,
+            callback.message.chat.id,
+            callback.from_user.id,
+            course,
+            course_id,
         )
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:bkash → bKash Instructions
+    #  bKash — Instructions + Phone Number চাও
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -733,27 +555,37 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
-
         uid = callback.from_user.id
-
-        # pending_method store করো next step এর জন্য
-        await _store_pending_method(uid, course_id, "bkash")
+        _pending_methods[f"{uid}:{course_id}"] = "bkash"
+        _proof_state[uid] = {
+            "course_id": course_id,
+            "method":    "bKash",
+            "step":      "phone",
+            "phone":     None,
+        }
 
         await callback.message.edit_text(
             _bkash_text(course, uid),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=after_manual_payment_kb(course_id),
+        )
+        # Phone চাও
+        await callback.message.reply_text(
+            MSG.PROOF_ASK_PHONE.format(
+                course_name = course["name"],
+                currency    = course["currency"],
+                price       = course["price"],
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=proof_phone_kb(course_id),
         )
         await callback.answer("📲 bKash নির্দেশনা")
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:nagad → Nagad Instructions
+    #  Nagad — Instructions + Phone Number চাও
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -764,25 +596,36 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
-
         uid = callback.from_user.id
-        await _store_pending_method(uid, course_id, "nagad")
+        _pending_methods[f"{uid}:{course_id}"] = "nagad"
+        _proof_state[uid] = {
+            "course_id": course_id,
+            "method":    "Nagad",
+            "step":      "phone",
+            "phone":     None,
+        }
 
         await callback.message.edit_text(
             _nagad_text(course, uid),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=after_manual_payment_kb(course_id),
+        )
+        await callback.message.reply_text(
+            MSG.PROOF_ASK_PHONE.format(
+                course_name = course["name"],
+                currency    = course["currency"],
+                price       = course["price"],
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=proof_phone_kb(course_id),
         )
         await callback.answer("📲 Nagad নির্দেশনা")
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:crypto → Binance Instructions
+    #  Crypto
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -793,25 +636,36 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
-
         uid = callback.from_user.id
-        await _store_pending_method(uid, course_id, "crypto")
+        _pending_methods[f"{uid}:{course_id}"] = "crypto"
+        _proof_state[uid] = {
+            "course_id": course_id,
+            "method":    "Binance/USDT",
+            "step":      "phone",
+            "phone":     None,
+        }
 
         await callback.message.edit_text(
             _crypto_text(course, uid),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=after_manual_payment_kb(course_id),
+        )
+        await callback.message.reply_text(
+            MSG.PROOF_ASK_PHONE.format(
+                course_name = course["name"],
+                currency    = course["currency"],
+                price       = course["price"],
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=proof_phone_kb(course_id),
         )
         await callback.answer("🪙 Crypto নির্দেশনা")
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:admin → Admin Contact
+    #  Admin Contact — No Direct Payment
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
@@ -822,23 +676,24 @@ def setup(app: Client) -> None:
     ):
         course_id = callback.matches[0].group(1)
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
 
+        # Direct payment বন্ধ — শুধু technical support
         await callback.message.edit_text(
-            _admin_contact_text(course),
+            MSG.NO_DIRECT_PAYMENT.format(
+                support=SUPPORT_USERNAME
+            ),
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            f"💬 {ADMIN_USERNAME} কে Message করুন",
+                            "🔧 Technical Support Only",
                             url=f"https://t.me/"
-                            f"{ADMIN_USERNAME.lstrip('@')}",
+                            f"{SUPPORT_USERNAME.lstrip('@')}",
                         )
                     ],
                     [
@@ -847,117 +702,261 @@ def setup(app: Client) -> None:
                             callback_data=f"cpay:back:{course_id}",
                         )
                     ],
-                    [
-                        InlineKeyboardButton(
-                            "🏠 Main Menu",
-                            callback_data="back:main",
-                        )
-                    ],
                 ]
             ),
             disable_web_page_preview=True,
         )
-        await callback.answer("💬 Admin contact")
+        await callback.answer()
 
     # ══════════════════════════════════════════════════════════
-    #  Callback — cpay:done → Manual Payment Submitted
+    #  Skip Phone Number
     # ══════════════════════════════════════════════════════════
 
     @app.on_callback_query(
-        filters.regex(r"^cpay:done:([a-f0-9]{24})$")
+        filters.regex(r"^proof:skip_phone:([a-f0-9]{24})$")
     )
-    async def cb_payment_done(
+    async def cb_skip_phone(
         client: Client, callback: CallbackQuery
     ):
         course_id = callback.matches[0].group(1)
+        uid       = callback.from_user.id
         course    = await db.get_course_by_id(course_id)
-
         if not course:
-            await callback.answer(
-                "⚠️ Course পাওয়া যায়নি।", show_alert=True
+            return await callback.answer(
+                MSG.ERROR_COURSE_NOT_FOUND, show_alert=True
             )
-            return
 
-        uid  = callback.from_user.id
-        user = callback.from_user
+        state = _proof_state.get(uid)
+        if not state:
+            return await callback.answer(
+                "Session expired. আবার শুরু করুন।",
+                show_alert=True,
+            )
 
-        # কোন method use করেছে সেটা retrieve করো
-        method = _get_pending_method(uid, course_id)
+        state["phone"] = None
+        state["step"]  = "screenshot"
 
-        # Pending order create করো
-        order_id = await db.create_order(
-            {
-                "user_id":     uid,
-                "user_name":   user.first_name,
-                "username":    user.username,
-                "course_id":   course_id,
-                "course_name": course["name"],
-                "amount":      course["price"],
-                "currency":    course["currency"],
-                "method":      method or "manual",
-                "status":      "pending",
-            }
-        )
-
-        clear_state(uid)
-        _clear_pending_method(uid, course_id)
-
-        LOGGER.info(
-            f"[Payment] Manual submitted | "
-            f"user={uid} course={course['name']} "
-            f"method={method} order={order_id}"
-        )
-
-        # User কে confirm করো
         await callback.message.edit_text(
-            _manual_submitted_text(
-                course, method or "manual", uid
+            MSG.PROOF_ASK_SCREENSHOT.format(
+                course_name = course["name"],
+                currency    = course["currency"],
+                price       = course["price"],
+                method      = state["method"],
+                phone_line  = "",
             ),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            f"💬 {ADMIN_USERNAME}",
-                            url=f"https://t.me/"
-                            f"{ADMIN_USERNAME.lstrip('@')}",
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "🏠 Main Menu",
-                            callback_data="back:main",
-                        )
-                    ],
-                ]
-            ),
+            reply_markup=proof_cancel_kb(course_id),
         )
-
-        # সব admin কে notify করো
-        username_str = (
-            f"@{user.username}" if user.username else "@N/A"
-        )
-        admin_text = _admin_manual_notify(
-            course, uid, username_str,
-            user.first_name, method or "manual", order_id,
-        )
-        for admin_id in ADMIN_IDS:
-            try:
-                await client.send_message(
-                    admin_id,
-                    admin_text,
-                    parse_mode=ParseMode.MARKDOWN,
-                    reply_markup=admin_order_kb(order_id),
-                )
-            except Exception as e:
-                LOGGER.warning(
-                    f"[Payment] Admin {admin_id} notify failed: {e}"
-                )
-
-        await callback.answer("✅ Payment submit হয়েছে!")
+        await callback.answer("⏭ Phone skip করা হয়েছে")
 
     # ══════════════════════════════════════════════════════════
-    #  Raw Update — Stars pre-checkout & success
+    #  Message Handler — Phone Number & Screenshot
+    # ══════════════════════════════════════════════════════════
+
+    @app.on_message(
+        filters.private
+        & (filters.text | filters.photo | filters.document),
+        group=15,
+    )
+    async def proof_input_handler(
+        client: Client, message: Message
+    ):
+        uid   = message.from_user.id
+        state = _proof_state.get(uid)
+
+        if not state:
+            return  # Proof flow এ নেই
+
+        course_id = state.get("course_id")
+        course    = await db.get_course_by_id(course_id)
+        if not course:
+            _proof_state.pop(uid, None)
+            return
+
+        step = state.get("step")
+
+        # ── Step 1: Phone Number ───────────────────────────────
+        if step == "phone" and message.text:
+            phone = message.text.strip()
+
+            # Basic validation
+            if not (
+                phone.startswith("01")
+                and len(phone) == 11
+                and phone.isdigit()
+            ) and not (
+                phone.startswith("+")
+                and len(phone) > 8
+            ):
+                await message.reply_text(
+                    "⚠️ Valid Phone Number দিন।\n"
+                    "_e.g. 01712345678_\n\n"
+                    "অথবা Skip করুন।",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=proof_phone_kb(course_id),
+                )
+                return
+
+            state["phone"] = phone
+            state["step"]  = "screenshot"
+
+            phone_line = f"📱 **Phone:** `{phone}`\n"
+
+            await message.reply_text(
+                MSG.PROOF_ASK_SCREENSHOT.format(
+                    course_name = course["name"],
+                    currency    = course["currency"],
+                    price       = course["price"],
+                    method      = state["method"],
+                    phone_line  = phone_line,
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=proof_cancel_kb(course_id),
+            )
+
+        # ── Step 2: Screenshot ─────────────────────────────────
+        elif step == "screenshot" and (
+            message.photo or message.document
+        ):
+            # File ID নাও
+            if message.photo:
+                file_id = message.photo.file_id
+            else:
+                file_id = message.document.file_id
+
+            caption = message.caption or "No caption"
+            phone   = state.get("phone") or "N/A"
+            method  = state.get("method", "manual")
+            user    = message.from_user
+
+            username_str = (
+                f"@{user.username}"
+                if user.username else "@N/A"
+            )
+
+            # ── Duplicate proof check ──────────────────────────
+            existing_proofs = await db.get_user_proofs(uid)
+            pending = [
+                p for p in existing_proofs
+                if p.get("status") == "pending"
+                and str(p.get("course_id")) == str(course_id)
+            ]
+            if pending:
+                proof_id = str(pending[0]["_id"])
+                await message.reply_text(
+                    MSG.PROOF_ALREADY_PENDING.format(
+                        course_name = course["name"],
+                        proof_id    = proof_id[-8:],
+                        support     = SUPPORT_USERNAME,
+                    ),
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                _proof_state.pop(uid, None)
+                return
+
+            # ── Proof save করো ────────────────────────────────
+            proof_id = await db.save_payment_proof(
+                {
+                    "user_id":       uid,
+                    "user_name":     user.first_name,
+                    "username":      username_str,
+                    "course_id":     course_id,
+                    "course_name":   course["name"],
+                    "amount":        course["price"],
+                    "currency":      course["currency"],
+                    "method":        method,
+                    "phone_number":  phone,
+                    "proof_file_id": file_id,
+                    "proof_caption": caption,
+                }
+            )
+
+            _proof_state.pop(uid, None)
+            _pending_methods.pop(
+                f"{uid}:{course_id}", None
+            )
+
+            LOGGER.info(
+                f"[Proof] Submitted | "
+                f"user={uid} course={course['name']} "
+                f"method={method} proof={proof_id}"
+            )
+
+            # ── User কে confirm করো ───────────────────────────
+            await message.reply_text(
+                MSG.PROOF_SUBMITTED.format(
+                    course_name = course["name"],
+                    method      = method,
+                    phone       = phone,
+                    proof_id    = proof_id[-8:],
+                    support     = SUPPORT_USERNAME,
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "🏠 Main Menu",
+                                callback_data="back:main",
+                            )
+                        ]
+                    ]
+                ),
+            )
+
+            # ── Admin দের proof পাঠাও ─────────────────────────
+            admin_text = MSG.ADMIN_NEW_PROOF.format(
+                user_name   = user.first_name,
+                user_id     = uid,
+                username    = username_str,
+                phone       = phone,
+                course_name = course["name"],
+                currency    = course["currency"],
+                price       = course["price"],
+                method      = method,
+                proof_id    = proof_id[-8:],
+                caption     = caption,
+            )
+
+            for admin_id in ADMIN_IDS:
+                try:
+                    # Screenshot পাঠাও caption সহ
+                    if message.photo:
+                        await client.send_photo(
+                            admin_id,
+                            file_id,
+                            caption=admin_text,
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_markup=admin_proof_actions_kb(
+                                proof_id
+                            ),
+                        )
+                    else:
+                        await client.send_document(
+                            admin_id,
+                            file_id,
+                            caption=admin_text,
+                            parse_mode=ParseMode.MARKDOWN,
+                            reply_markup=admin_proof_actions_kb(
+                                proof_id
+                            ),
+                        )
+                except Exception as e:
+                    LOGGER.warning(
+                        f"[Proof] Admin {admin_id} notify failed: {e}"
+                    )
+
+        # ── Text এসেছে কিন্তু screenshot step এ ──────────────
+        elif step == "screenshot" and message.text:
+            await message.reply_text(
+                "⚠️ Screenshot বা Document পাঠান।\n"
+                "Text দিয়ে হবে না।",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=proof_cancel_kb(course_id),
+            )
+
+    # ══════════════════════════════════════════════════════════
+    #  Raw Update — Stars
     # ══════════════════════════════════════════════════════════
 
     app.add_handler(
@@ -965,30 +964,4 @@ def setup(app: Client) -> None:
         group=5,
     )
 
-    LOGGER.info("[Payment] Payment plugin loaded ✅")
-
-
-# ═════════════════════════════════════════════════════════════
-#  In-memory pending method store
-#  (কোন user কোন method select করেছে track রাখে)
-# ═════════════════════════════════════════════════════════════
-
-_pending_methods: dict = {}
-
-
-async def _store_pending_method(
-    user_id: int, course_id: str, method: str
-) -> None:
-    _pending_methods[f"{user_id}:{course_id}"] = method
-
-
-def _get_pending_method(
-    user_id: int, course_id: str
-) -> str | None:
-    return _pending_methods.get(f"{user_id}:{course_id}")
-
-
-def _clear_pending_method(
-    user_id: int, course_id: str
-) -> None:
-    _pending_methods.pop(f"{user_id}:{course_id}", None)
+    LOGGER.info("[Payment] Plugin loaded ✅")
