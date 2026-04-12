@@ -26,24 +26,23 @@ DATABASE_NAME = os.getenv("DATABASE_NAME", "course_bot_db")
 # ─── Bot Meta ─────────────────────────────────────────────────
 BOT_NAME         = os.getenv("BOT_NAME", "EduCourse Bot")
 SUPPORT_USERNAME = "@studyqoro"
+ADMIN_USERNAME   = "@studyqoro"
+
+# ─── Force Subscribe ──────────────────────────────────────────
+# Channel username — @ ছাড়া দাও
+# None বা খালি হলে Force Sub disabled
+_raw_fsub        = os.getenv("FORCE_SUB_CHANNEL", "")
+FORCE_SUB_CHANNEL = _raw_fsub.strip() if _raw_fsub.strip() else None
 
 # ─── Payment Config ───────────────────────────────────────────
-ADMIN_USERNAME = "@studyqoro"
-
-# bKash
-BKASH_NUMBER = os.getenv("BKASH_NUMBER", "01XXXXXXXXX")
-
-# Nagad
-NAGAD_NUMBER = os.getenv("NAGAD_NUMBER", "01XXXXXXXXX")
-
-# Binance USDT TRC20
+BKASH_NUMBER    = os.getenv("BKASH_NUMBER", "01XXXXXXXXX")
+NAGAD_NUMBER    = os.getenv("NAGAD_NUMBER", "01XXXXXXXXX")
 BINANCE_UID     = os.getenv("BINANCE_UID", "YOUR_BINANCE_UID")
 BINANCE_ADDRESS = os.getenv(
-    "BINANCE_ADDRESS",
-    "YOUR_TRC20_WALLET_ADDRESS",
+    "BINANCE_ADDRESS", "YOUR_TRC20_WALLET_ADDRESS"
 )
 
-# ─── Payment Info (course_flow.py এ use হয়) ──────────────────
+# ─── Payment Info ─────────────────────────────────────────────
 PAYMENT_INFO = (
     "📲 **bKash:** `{bkash}`\n"
     "📲 **Nagad:** `{nagad}`\n"
