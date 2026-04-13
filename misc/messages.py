@@ -1,50 +1,10 @@
 # misc/messages.py
 # Copyright @YourChannel
-# ─────────────────────────────────────────────────────────────
-# সব User-facing Message Template এক জায়গায়।
-#
-# কীভাবে edit করবে:
-#   • শুধু এই ফাইল খুলো
-#   • যে message টা পরিবর্তন করতে চাও সেটা খোঁজো
-#   • Text পরিবর্তন করো
-#   • {variable} গুলো একই রাখো — ওগুলো runtime এ fill হয়
-#
-# কীভাবে অন্য ফাইলে use করবে:
-#   from misc.messages import MSG
-#   text = MSG.WELCOME.format(name="Rahim")
-# ─────────────────────────────────────────────────────────────
 
 from config import ADMIN_USERNAME, BOT_NAME, SUPPORT_USERNAME
 
 
 class MSG:
-    """
-    সব message template এখানে।
-    Class variable হিসেবে define করা —
-    import করে সরাসরি use করো।
-
-    ── Sections ──────────────────────────────────────────────
-    1.  START & WELCOME
-    2.  MAIN MENU & NAVIGATION
-    3.  HELP & SUPPORT
-    4.  COURSE BROWSING
-    5.  COURSE DETAIL
-    6.  PAYMENT — METHOD SELECTION
-    7.  PAYMENT — BKASH
-    8.  PAYMENT — NAGAD
-    9.  PAYMENT — BINANCE/USDT
-    10. PAYMENT — ADMIN CONTACT
-    11. PAYMENT — SUBMITTED (Manual)
-    12. PAYMENT — SUCCESS (Stars Auto)
-    13. PAYMENT — APPROVED (Admin approves)
-    14. PAYMENT — REJECTED (Admin rejects)
-    15. ONE-TIME INVITE LINK
-    16. MY ORDERS
-    17. PROFILE
-    18. ERROR MESSAGES
-    19. ADMIN NOTIFICATIONS
-    20. GENERAL
-    """
 
     # ══════════════════════════════════════════════════════════
     #  1. START & WELCOME
@@ -66,9 +26,7 @@ class MSG:
         "নিচের বাটনে ক্লিক করে শুরু করুন 👇"
     )
 
-    KEYBOARD_LOADED = (
-        "__Keyboard লোড হয়েছে।__"
-    )
+    KEYBOARD_LOADED = "__Keyboard লোড হয়েছে।__"
 
     # ══════════════════════════════════════════════════════════
     #  2. MAIN MENU & NAVIGATION
@@ -89,12 +47,10 @@ class MSG:
         "Main Menu তে ফিরে এসেছেন।"
     )
 
-    NOTHING_TO_CANCEL = (
-        "ℹ️ কোনো চলমান কাজ নেই।"
-    )
+    NOTHING_TO_CANCEL = "ℹ️ কোনো চলমান কাজ নেই।"
 
     # ══════════════════════════════════════════════════════════
-    #  3. HELP & SUPPORT
+    #  3. HELP & SUPPORT  ← আপনার চাহিদামতো পরিবর্তিত
     # ══════════════════════════════════════════════════════════
 
     HELP = (
@@ -104,10 +60,11 @@ class MSG:
         "• 📚 Courses বাটনে ক্লিক করুন\n"
         "• পছন্দের Course বেছে নিন\n"
         "• **🛒 Buy Now** তে ক্লিক করুন\n"
-        "• Payment করুন\n"
+        "• bKash বা Nagad এ Payment করুন\n"
+        "• Screenshot দিন (ঐচ্ছিক)\n"
         "• Admin verify করে Access দেবেন\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💬 **সাহায্যের জন্য:**\n"
+        "💬 **যেকোনো সাহায্যের জন্য আমাদের হেল্পলাইনে যোগাযোগ করুন:**\n"
         "{support}\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "**Commands:**\n"
@@ -126,53 +83,16 @@ class MSG:
         "📞 যোগাযোগ: {support}"
     )
 
-    SELECT_BRAND = (
-        "🏷 **Brand বেছে নিন**\n\n"
-        "কোন Institute এর Course দেখতে চান?"
-    )
+    SELECT_BRAND    = "🏷 **Brand বেছে নিন**\n\nকোন Institute এর Course দেখতে চান?"
+    SELECT_BATCH    = "📦 **Batch বেছে নিন**\n\n🏷 __Brand:__ `{brand}`\n\nকোন Batch এর Course দেখতে চান?"
+    SELECT_CATEGORY = "📂 **Category বেছে নিন**\n\n🏷 __Brand:__ `{brand}`\n📦 __Batch:__ `{batch}`\n\nকোন Category দেখতে চান?"
+    SELECT_SUBJECT  = "📖 **Subject বেছে নিন**\n\n🏷 __Brand:__ `{brand}`\n📦 __Batch:__ `{batch}`\n📂 __Category:__ `{category}`\n\nকোন Subject এর Course দেখতে চান?"
+    SELECT_COURSE   = "🎓 **Available Courses**\n\n**{brand}** › **{batch}** › **{category}** › **{subject}**\n\nএকটা Course বেছে নিন 👇"
 
-    SELECT_BATCH = (
-        "📦 **Batch বেছে নিন**\n\n"
-        "🏷 __Brand:__ `{brand}`\n\n"
-        "কোন Batch এর Course দেখতে চান?"
-    )
-
-    SELECT_CATEGORY = (
-        "📂 **Category বেছে নিন**\n\n"
-        "🏷 __Brand:__ `{brand}`\n"
-        "📦 __Batch:__ `{batch}`\n\n"
-        "কোন Category দেখতে চান?"
-    )
-
-    SELECT_SUBJECT = (
-        "📖 **Subject বেছে নিন**\n\n"
-        "🏷 __Brand:__ `{brand}`\n"
-        "📦 __Batch:__ `{batch}`\n"
-        "📂 __Category:__ `{category}`\n\n"
-        "কোন Subject এর Course দেখতে চান?"
-    )
-
-    SELECT_COURSE = (
-        "🎓 **Available Courses**\n\n"
-        "**{brand}** › **{batch}** › **{category}** › **{subject}**\n\n"
-        "একটা Course বেছে নিন 👇"
-    )
-
-    NO_BATCHES = (
-        "⚠️ এই Brand এ কোনো Batch পাওয়া যায়নি।"
-    )
-
-    NO_CATEGORIES = (
-        "⚠️ এই Batch এ কোনো Category পাওয়া যায়নি।"
-    )
-
-    NO_SUBJECTS = (
-        "⚠️ এই Category তে কোনো Subject পাওয়া যায়নি।"
-    )
-
-    NO_COURSES = (
-        "⚠️ এই Subject এ কোনো Course পাওয়া যায়নি।"
-    )
+    NO_BATCHES    = "⚠️ এই Brand এ কোনো Batch পাওয়া যায়নি।"
+    NO_CATEGORIES = "⚠️ এই Batch এ কোনো Category পাওয়া যায়নি।"
+    NO_SUBJECTS   = "⚠️ এই Category তে কোনো Subject পাওয়া যায়নি।"
+    NO_COURSES    = "⚠️ এই Subject এ কোনো Course পাওয়া যায়নি।"
 
     # ══════════════════════════════════════════════════════════
     #  5. COURSE DETAIL
@@ -205,7 +125,7 @@ class MSG:
     )
 
     # ══════════════════════════════════════════════════════════
-    #  6. PAYMENT — METHOD SELECTION
+    #  6. PAYMENT — METHOD SELECTION (শুধু bKash ও Nagad)
     # ══════════════════════════════════════════════════════════
 
     PAYMENT_METHOD_SELECT = (
@@ -215,14 +135,10 @@ class MSG:
         "💰 **মূল্য:** `{currency} {price}`\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
         "নিচের যেকোনো পদ্ধতিতে Payment করুন 👇\n\n"
-        "⭐ **Telegram Stars**\n"
-        "└ পেমেন্টের সাথে সাথেই Access একটিভ!\n\n"
-        "📲 **bKash / Nagad**\n"
+        "📲 **bKash**\n"
         "└ বাংলাদেশী Mobile Banking\n\n"
-        "🪙 **Binance / USDT (TRC20)**\n"
-        "└ Crypto Payment\n\n"
-        "💬 **সরাসরি Admin কে Message**\n"
-        "└ অন্য যেকোনো ব্যবস্থা\n\n"
+        "📲 **Nagad**\n"
+        "└ বাংলাদেশী Mobile Banking\n\n"
         "📞 সাহায্য: {support}"
     )
 
@@ -248,7 +164,6 @@ class MSG:
         "5️⃣ Reference এ দিন: `{user_id}`\n"
         "6️⃣ Payment সম্পন্ন করুন\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "✅ **Payment করার পর** নিচের বাটনে ক্লিক করুন\n\n"
         "📞 সাহায্য: {support}"
     )
 
@@ -274,126 +189,68 @@ class MSG:
         "5️⃣ Reference এ দিন: `{user_id}`\n"
         "6️⃣ Payment সম্পন্ন করুন\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "✅ **Payment করার পর** নিচের বাটনে ক্লিক করুন\n\n"
         "📞 সাহায্য: {support}"
     )
 
     # ══════════════════════════════════════════════════════════
-    #  9. PAYMENT — BINANCE / USDT
+    #  9. PROOF — Phone ও Screenshot চাওয়া
     # ══════════════════════════════════════════════════════════
 
-    PAYMENT_CRYPTO = (
-        "🪙 **Binance / USDT (TRC20) Payment**\n\n"
+    PROOF_ASK_PHONE = (
+        "📱 **Payment এর Phone Number দিন**\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "📦 **Course:** `{course_name}`\n"
-        "💰 **পরিমাণ:** `{price} {currency}`\n"
+        "💰 **Amount:** `{currency} {price}`\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "🆔 **Binance UID:** `{binance_uid}`\n"
-        "📬 **TRC20 Address:**\n"
-        "`{binance_address}`\n"
-        "🔗 **Network:** `USDT (TRC20)`\n"
-        "📝 **Memo/Note:** `{user_id}`\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "📌 **ধাপে ধাপে নির্দেশনা:**\n\n"
-        "1️⃣ Binance বা যেকোনো USDT Wallet খুলুন\n"
-        "2️⃣ **Send/Transfer** এ যান\n"
-        "3️⃣ **USDT** → **TRC20** Network বেছে নিন\n"
-        "4️⃣ Address: `{binance_address}`\n"
-        "5️⃣ Amount: `{price} {currency}`\n"
-        "6️⃣ Memo তে দিন: `{user_id}`\n"
-        "7️⃣ Transaction সম্পন্ন করুন\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "✅ **Payment করার পর** নিচের বাটনে ক্লিক করুন\n\n"
-        "📞 সাহায্য: {support}"
+        "যে নম্বর থেকে payment করেছেন সেটা দিন:\n"
+        "_e.g. 01712345678_\n\n"
+        "⏭ **Skip** করলে phone number ছাড়াই জমা হবে।"
     )
 
-    # ══════════════════════════════════════════════════════════
-    #  10. PAYMENT — ADMIN CONTACT
-    # ══════════════════════════════════════════════════════════
-
-    PAYMENT_ADMIN_CONTACT = (
-        "💬 **Admin কে সরাসরি Message করুন**\n\n"
+    PROOF_ASK_SCREENSHOT = (
+        "📸 **Payment Screenshot দিন** _(ঐচ্ছিক)_\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "📦 **Course:** `{course_name}`\n"
-        "💰 **মূল্য:** `{currency} {price}`\n"
+        "💰 **Amount:** `{currency} {price}`\n"
+        "💳 **Method:** `{method}`\n"
+        "{phone_line}"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "উপরের কোনো পদ্ধতি Suitable না?\n"
-        "Admin কে সরাসরি Message করুন।\n\n"
-        "👤 **Admin:** {support}\n\n"
-        "💡 **অন্যান্য গ্রহণযোগ্য পদ্ধতি:**\n"
-        "• 🏦 Bank Transfer\n"
-        "• 💵 অন্যান্য Mobile Banking\n"
-        "• 🤝 পারস্পরিক সমঝোতায় যেকোনো ব্যবস্থা\n\n"
-        "🇧🇩 আমরা বাংলাদেশি — সাহায্য করতে সদা প্রস্তুত!"
+        "Payment এর screenshot পাঠান অথবা **Skip** করুন।\n\n"
+        "⏭ Screenshot না দিলেও আপনার request জমা হবে।\n"
+        "Admin manually verify করবেন।"
     )
 
-    # ══════════════════════════════════════════════════════════
-    #  11. PAYMENT — SUBMITTED (Manual payment এর পর)
-    # ══════════════════════════════════════════════════════════
-
-    PAYMENT_SUBMITTED = (
-        "✅ **Payment Submit হয়েছে!**\n\n"
+    PROOF_SUBMITTED = (
+        "✅ **Payment Request জমা হয়েছে!**\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "📦 **Course:** `{course_name}`\n"
         "💳 **Method:** `{method}`\n"
-        "👤 **আপনার ID:** `{user_id}`\n"
+        "📱 **Phone:** `{phone}`\n"
+        "🆔 **Proof ID:** `#{proof_id}`\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "⏳ **Admin আপনার Payment verify করছেন।**\n"
+        "⏳ Admin আপনার payment verify করছেন।\n"
         "সাধারণত কয়েক মিনিটের মধ্যে Confirm হবে।\n\n"
-        "Confirm হলে আপনি এখানে notification পাবেন।\n\n"
+        "Confirm হলে এখানে notification পাবেন।\n\n"
         "📞 সাহায্য: {support}"
     )
 
-    PAYMENT_ALREADY_PENDING = (
-        "⚠️ **আপনার আগের Payment এখনো Pending আছে!**\n\n"
-        "📦 Course: `{course_name}`\n\n"
+    PROOF_ALREADY_PENDING = (
+        "⚠️ **আপনার আগের Payment Request এখনো Pending!**\n\n"
+        "📦 Course: `{course_name}`\n"
+        "🆔 Proof ID: `#{proof_id}`\n\n"
         "Admin verify করা পর্যন্ত অপেক্ষা করুন।\n"
         "📞 সাহায্য: {support}"
     )
 
-    # ══════════════════════════════════════════════════════════
-    #  12. PAYMENT — SUCCESS (Telegram Stars auto payment)
-    # ══════════════════════════════════════════════════════════
-
-    PAYMENT_STARS_SUCCESS = (
-        "🎉 **Payment সফল! Stars দিয়ে কেনা হয়েছে!**\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "👤 **নাম:** {user_name}\n"
-        "📦 **Course:** `{course_name}`\n"
-        "⭐ **Stars:** `{stars_amount}`\n"
-        "🧾 **Transaction ID:** `{tx_id}`\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "🚀 আপনার Course Access এখনই দেওয়া হচ্ছে!\n"
-        "একটু অপেক্ষা করুন...\n\n"
-        "📞 সাহায্য: {support}"
-    )
-
-    STARS_INVOICE_GENERATING = (
-        "⏳ **{course_name} এর Stars Invoice তৈরি হচ্ছে...**\n\n"
-        "একটু অপেক্ষা করুন।"
-    )
-
-    STARS_INVOICE_READY = (
-        "✅ **Invoice Ready!**\n\n"
-        "📦 Course: `{course_name}`\n"
-        "⭐ Amount: `{stars_amount} Stars`\n\n"
-        "উপরের **Pay** বাটনে tap করুন।\n"
-        "পেমেন্টের সাথে সাথেই Access একটিভ হবে! 🚀"
-    )
-
-    STARS_INVOICE_FAILED = (
-        "❌ **Stars Invoice তৈরি করা যায়নি।**\n\n"
-        "অন্য Payment পদ্ধতি ব্যবহার করুন।\n"
-        "📞 সাহায্য: {support}"
-    )
-
-    STARS_DUPLICATE_INVOICE = (
-        "⚠️ **আরেকটি Invoice ইতিমধ্যে Active আছে!**\n\n"
-        "আগের Invoice complete বা cancel করুন।"
+    NO_DIRECT_PAYMENT = (
+        "ℹ️ **অন্য Payment পদ্ধতির জন্য**\n\n"
+        "bKash বা Nagad ছাড়া অন্য কোনো পদ্ধতিতে\n"
+        "payment করতে চাইলে সরাসরি যোগাযোগ করুন:\n\n"
+        "📞 **Support:** {support}"
     )
 
     # ══════════════════════════════════════════════════════════
-    #  13. PAYMENT — APPROVED (Admin approve করলে user পাবে)
+    #  10. PAYMENT APPROVED — Membership Card ← নতুন format
     # ══════════════════════════════════════════════════════════
 
     PAYMENT_APPROVED = (
@@ -421,7 +278,40 @@ class MSG:
     )
 
     # ══════════════════════════════════════════════════════════
-    #  14. PAYMENT — REJECTED (Admin reject করলে user পাবে)
+    #  MEMBERSHIP CARD  ← আপনার চাহিদামতো বিশেষ format
+    # ══════════════════════════════════════════════════════════
+
+    MEMBERSHIP_CARD = (
+        "🎉 **Congratulations!** 🎉\n\n"
+        "আপনি সফলভাবে আমাদের কোর্স ক্রয় করেছেন।\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "📌 **Membership ID :** `{membership_id}`\n"
+        "📌 **Name :** {name}\n"
+        "📌 **Phone :** `{phone}`\n"
+        "📌 **Course :** {course_name}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "👉 অনুগ্রহ করে এই মেসেজটি যত্ন করে সংরক্ষণ করবেন।\n"
+        "ভবিষ্যতে কোনো সমস্যার ক্ষেত্রে আপনি যে আমাদের থেকে\n"
+        "কোর্স কিনছেন সেটার প্রমাণ হিসেবে দেখাতে পারবেন।\n\n"
+        "আমাদের উপর বিশ্বাস রাখার জন্য আন্তরিক ধন্যবাদ। 💙"
+    )
+
+    MEMBERSHIP_CARD_NO_PHONE = (
+        "🎉 **Congratulations!** 🎉\n\n"
+        "আপনি সফলভাবে আমাদের কোর্স ক্রয় করেছেন।\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "📌 **Membership ID :** `{membership_id}`\n"
+        "📌 **Name :** {name}\n"
+        "📌 **Course :** {course_name}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "👉 অনুগ্রহ করে এই মেসেজটি যত্ন করে সংরক্ষণ করবেন।\n"
+        "ভবিষ্যতে কোনো সমস্যার ক্ষেত্রে আপনি যে আমাদের থেকে\n"
+        "কোর্স কিনছেন সেটার প্রমাণ হিসেবে দেখাতে পারবেন।\n\n"
+        "আমাদের উপর বিশ্বাস রাখার জন্য আন্তরিক ধন্যবাদ। 💙"
+    )
+
+    # ══════════════════════════════════════════════════════════
+    #  11. PAYMENT REJECTED
     # ══════════════════════════════════════════════════════════
 
     PAYMENT_REJECTED = (
@@ -440,7 +330,7 @@ class MSG:
     )
 
     # ══════════════════════════════════════════════════════════
-    #  15. ONE-TIME INVITE LINK
+    #  12. ONE-TIME INVITE LINK
     # ══════════════════════════════════════════════════════════
 
     INVITE_LINK_MESSAGE = (
@@ -453,22 +343,13 @@ class MSG:
         "⚠️ **গুরুত্বপূর্ণ সতর্কতা:**\n"
         "• এই Link শুধু **একবারই** কাজ করবে\n"
         "• **২৪ ঘন্টার** মধ্যে Join করতে হবে\n"
-        "• Link কারো সাথে **Share করবেন না**\n"
-        "• Link Share করলে আপনি Join করতে পারবেন না\n\n"
+        "• Link কারো সাথে **Share করবেন না**\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "📞 সমস্যা হলে: {support}"
     )
 
-    INVITE_LINK_EXPIRED = (
-        "⚠️ **Link Expired বা Already Used!**\n\n"
-        "আপনার Invite Link আর কাজ করছে না।\n\n"
-        "নতুন Link এর জন্য যোগাযোগ করুন:\n"
-        "📞 {support}\n\n"
-        "Order ID: `{order_id}`"
-    )
-
     # ══════════════════════════════════════════════════════════
-    #  16. MY ORDERS
+    #  13. MY ORDERS
     # ══════════════════════════════════════════════════════════
 
     MY_ORDERS_EMPTY = (
@@ -477,10 +358,7 @@ class MSG:
         "📚 Course দেখতে **Browse Courses** বাটনে ক্লিক করুন।"
     )
 
-    MY_ORDERS_HEADER = (
-        "🛒 **আমার Orders**\n\n"
-        "আপনার সব Order নিচে দেখানো হচ্ছে:\n"
-    )
+    MY_ORDERS_HEADER = "🛒 **আমার Orders**\n\nআপনার সব Order নিচে দেখানো হচ্ছে:\n"
 
     MY_ORDERS_ITEM = (
         "{index}. **{course_name}**\n"
@@ -495,7 +373,7 @@ class MSG:
     }
 
     # ══════════════════════════════════════════════════════════
-    #  17. PROFILE
+    #  14. PROFILE
     # ══════════════════════════════════════════════════════════
 
     PROFILE = (
@@ -511,53 +389,52 @@ class MSG:
     )
 
     # ══════════════════════════════════════════════════════════
-    #  18. ERROR MESSAGES
+    #  15. ERROR MESSAGES
     # ══════════════════════════════════════════════════════════
 
-    ERROR_GENERIC = (
-        "❌ **কিছু একটা সমস্যা হয়েছে।**\n\n"
-        "আবার চেষ্টা করুন অথবা যোগাযোগ করুন:\n"
-        "📞 {support}"
-    )
-
-    ERROR_COURSE_NOT_FOUND = (
-        "❌ **Course টি পাওয়া যায়নি।**\n\n"
-        "Course টি হয়তো সরিয়ে নেওয়া হয়েছে।"
-    )
-
-    ERROR_ORDER_NOT_FOUND = (
-        "❌ **Order টি পাওয়া যায়নি।**\n\n"
-        "Order ID: `{order_id}`"
-    )
-
-    ERROR_PAYMENT_PROCESSING = (
-        "⚠️ **Payment Received কিন্তু Processing এ সমস্যা!**\n\n"
-        "Transaction ID সহ Admin কে জানান:\n"
-        "📞 {support}"
-    )
-
-    ERROR_ACCESS_DENIED = (
-        "⛔ **Access Denied**\n\n"
-        "এই কাজটি করার Permission আপনার নেই।"
-    )
-
-    ERROR_GROUP_NO_ACCESS = (
-        "❌ **Group Access দেওয়া সম্ভব হয়নি!**\n\n"
-        "Admin কে জানান:\n"
-        "📞 {support}\n\n"
-        "Order ID: `{order_id}`"
-    )
+    ERROR_GENERIC             = "❌ **কিছু একটা সমস্যা হয়েছে।**\n\nআবার চেষ্টা করুন অথবা যোগাযোগ করুন:\n📞 {support}"
+    ERROR_COURSE_NOT_FOUND    = "❌ **Course টি পাওয়া যায়নি।**\n\nCourse টি হয়তো সরিয়ে নেওয়া হয়েছে।"
+    ERROR_ORDER_NOT_FOUND     = "❌ **Order টি পাওয়া যায়নি।**\n\nOrder ID: `{order_id}`"
+    ERROR_PAYMENT_PROCESSING  = "⚠️ **Payment Received কিন্তু Processing এ সমস্যা!**\n\nTransaction ID সহ Admin কে জানান:\n📞 {support}"
+    ERROR_ACCESS_DENIED       = "⛔ **Access Denied**\n\nএই কাজটি করার Permission আপনার নেই।"
+    ERROR_GROUP_NO_ACCESS     = "❌ **Group Access দেওয়া সম্ভব হয়নি!**\n\nAdmin কে জানান:\n📞 {support}\n\nOrder ID: `{order_id}`"
 
     # ══════════════════════════════════════════════════════════
-    #  19. ADMIN NOTIFICATIONS
-    #  (Admin রা যা পাবেন — এগুলো admin দের message)
+    #  16. ADMIN NOTIFICATIONS
     # ══════════════════════════════════════════════════════════
+
+    # ← নতুন: কেউ কোর্স কিনলে admin কে নাম, বিকাশ নম্বর, কোর্সের নাম পাঠানো
+    ADMIN_PURCHASE_LOG = (
+        "🔔 **নতুন Course Purchase!**\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "👤 **ID নাম:** [{user_name}](tg://user?id={user_id}) (`{user_id}`)\n"
+        "📱 **বিকাশ/নগদ নম্বর:** `{phone}`\n"
+        "📦 **কোর্সের নাম:** `{course_name}`\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "🆔 **Order ID:** `{order_id}`\n"
+        "💳 **Method:** `{method}`\n"
+        "📅 **সময়:** {date}"
+    )
+
+    ADMIN_NEW_PROOF = (
+        "🔔 **নতুন Payment Proof জমা হয়েছে!**\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "👤 **User:** [{user_name}](tg://user?id={user_id}) (`{user_id}`)\n"
+        "📛 **Username:** {username}\n"
+        "📱 **Phone:** `{phone}`\n"
+        "📦 **Course:** {course_name}\n"
+        "💰 **Amount:** {currency} {price}\n"
+        "💳 **Method:** {method}\n"
+        "🆔 **Proof ID:** `#{proof_id}`\n"
+        "📝 **Note:** {caption}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "⬇️ Verify করে Approve বা Reject করুন:"
+    )
 
     ADMIN_NEW_MANUAL_PAYMENT = (
         "🔔 **নতুন Manual Payment!**\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "👤 **User:** [{user_name}](tg://user?id={user_id})"
-        " (`{user_id}`)\n"
+        "👤 **User:** [{user_name}](tg://user?id={user_id}) (`{user_id}`)\n"
         "📛 **Username:** {username}\n"
         "📦 **Course:** {course_name}\n"
         "💰 **Amount:** {currency} {price}\n"
@@ -567,24 +444,9 @@ class MSG:
         "⬇️ Verify করে Approve বা Reject করুন:"
     )
 
-    ADMIN_NEW_STARS_PAYMENT = (
-        "⭐ **Stars Payment Received! (Auto Approved)**\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "👤 **User:** [{user_name}](tg://user?id={user_id})"
-        " (`{user_id}`)\n"
-        "📛 **Username:** {username}\n"
-        "📦 **Course:** {course_name}\n"
-        "⭐ **Stars:** {stars_amount}\n"
-        "🧾 **TX ID:** `{tx_id}`\n"
-        "🆔 **Order ID:** `{order_id}`\n"
-        "✅ **Status:** Auto Approved\n"
-        "━━━━━━━━━━━━━━━━━━━━━"
-    )
-
     ADMIN_OTL_SUCCESS = (
         "✅ **Approved & One-Time Link Sent!**\n\n"
-        "👤 **User:** [{user_name}](tg://user?id={user_id})"
-        " (`{user_id}`)\n"
+        "👤 **User:** [{user_name}](tg://user?id={user_id}) (`{user_id}`)\n"
         "📦 **Course:** `{course_name}`\n"
         "🔗 **Link:** `{invite_link}`\n\n"
         "⚠️ Link একবারই কাজ করবে।\n"
@@ -612,77 +474,26 @@ class MSG:
     ADMIN_NO_GROUP_SET = (
         "⚠️ **Course এ Group Set করা নেই!**\n\n"
         "📦 **Course:** `{course_name}`\n"
-        "👤 **User:** [{user_name}](tg://user?id={user_id})"
-        " (`{user_id}`)\n\n"
+        "👤 **User:** [{user_name}](tg://user?id={user_id}) (`{user_id}`)\n\n"
         "Admin Panel → List Courses → এই Course এ\n"
-        "Group যোগ করুন।\n\n"
-        "অথবা manually User কে Link পাঠান।"
+        "Group যোগ করুন।"
     )
 
-    ADMIN_ORDER_APPROVED_CONFIRM = (
-        "✅ Order `{order_id_short}` **Approved!**"
-    )
-
-    ADMIN_ORDER_REJECTED_CONFIRM = (
-        "❌ Order `{order_id_short}` **Rejected.**"
-    )
+    ADMIN_ORDER_APPROVED_CONFIRM = "✅ Order `{order_id_short}` **Approved!**"
+    ADMIN_ORDER_REJECTED_CONFIRM = "❌ Order `{order_id_short}` **Rejected.**"
 
     # ══════════════════════════════════════════════════════════
-    #  20. GENERAL / MISC
+    #  17. GENERAL / MISC
     # ══════════════════════════════════════════════════════════
 
-    BROADCAST_SENDING = (
-        "📢 **{total_users}** জন User কে Broadcast হচ্ছে...\n"
-        "অপেক্ষা করুন।"
-    )
+    BROADCAST_SENDING = "📢 **{total_users}** জন User কে Broadcast হচ্ছে...\nঅপেক্ষা করুন।"
+    BROADCAST_DONE    = "✅ **Broadcast সম্পন্ন!**\n\n✅ Sent:   {sent}\n❌ Failed: {failed}"
 
-    BROADCAST_DONE = (
-        "✅ **Broadcast সম্পন্ন!**\n\n"
-        "✅ Sent:   {sent}\n"
-        "❌ Failed: {failed}"
-    )
+    GROUP_CHECK_SUCCESS   = "✅ **সব ঠিক আছে!**\n\n🆔 Group ID: `{group_id}`\n👑 Bot Status: Admin ✅\n🔗 Invite Permission: ✅\n\nএই Group ID টা Course এ Add করতে পারবেন।"
+    GROUP_CHECK_NO_INVITE = "⚠️ **Bot Admin কিন্তু Invite Permission নেই!**\n\n🆔 Group ID: `{group_id}`\n\n**সমাধান:**\nGroup → Admin Settings → Bot →\n'Invite Users via Link' চালু করুন।"
+    GROUP_CHECK_NOT_ADMIN = "❌ **Bot Admin না!**\n\n🆔 Group ID: `{group_id}`\n\n**সমাধান:**\n1. Group এ যান\n2. Members → Bot → Promote to Admin\n3. আবার `/checkgroup {group_id}` দিন"
+    GROUP_CHECK_ERROR     = "❌ **Error:**\n`{error}`\n\n**সমাধান:**\n1. Bot কে Group এ Add করুন\n2. Bot কে Admin বানান\n3. 'Invite Users via Link' Permission দিন"
+    GROUP_CHECKING        = "⏳ Group `{group_id}` check হচ্ছে..."
 
-    GROUP_CHECK_SUCCESS = (
-        "✅ **সব ঠিক আছে!**\n\n"
-        "🆔 Group ID: `{group_id}`\n"
-        "👑 Bot Status: Admin ✅\n"
-        "🔗 Invite Permission: ✅\n\n"
-        "এই Group ID টা Course এ Add করতে পারবেন।"
-    )
-
-    GROUP_CHECK_NO_INVITE = (
-        "⚠️ **Bot Admin কিন্তু Invite Permission নেই!**\n\n"
-        "🆔 Group ID: `{group_id}`\n"
-        "👑 Bot Status: Admin ✅\n"
-        "🔗 Invite Permission: ❌\n\n"
-        "**সমাধান:**\n"
-        "Group → Admin Settings → Bot →\n"
-        "'Invite Users via Link' চালু করুন।"
-    )
-
-    GROUP_CHECK_NOT_ADMIN = (
-        "❌ **Bot Admin না!**\n\n"
-        "🆔 Group ID: `{group_id}`\n"
-        "👑 Bot Status: Not Admin ❌\n\n"
-        "**সমাধান:**\n"
-        "1. Group এ যান\n"
-        "2. Members → Bot → Promote to Admin\n"
-        "3. 'Invite Users via Link' Permission দিন\n"
-        "4. আবার `/checkgroup {group_id}` দিন"
-    )
-
-    GROUP_CHECK_ERROR = (
-        "❌ **Error:**\n`{error}`\n\n"
-        "**সমাধান:**\n"
-        "1. Bot কে Group এ Add করুন\n"
-        "2. Bot কে Admin বানান\n"
-        "3. 'Invite Users via Link' Permission দিন"
-    )
-
-    GROUP_CHECKING = (
-        "⏳ Group `{group_id}` check হচ্ছে..."
-    )
-
-    SUPPORT_BUTTON_LABEL = "💬 Support: {support}"
-
+    SUPPORT_BUTTON_LABEL  = "💬 Support: {support}"
     JOIN_GROUP_BUTTON_LABEL = "🚀 Group এ Join করুন"
