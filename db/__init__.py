@@ -34,23 +34,24 @@ from .database import (
     get_orders_by_user,
     get_all_pending_orders,
     update_order_status,
-    update_order_membership,      # ← নতুন
+    update_order_membership,
     update_order_invite_link,
     get_orders_by_course,
     check_user_owns_course,
     get_full_stats,
 )
 
-# Payment Proof operations ← নতুন
+# Payment Proof operations
 from .database import (
     save_payment_proof,
     get_proof_by_id,
     get_pending_proofs,
     update_proof_status,
     get_user_proofs,
+    get_pending_proof_for_course,
 )
 
-# Membership ← নতুন
+# Membership
 from .database import (
     get_unique_membership_id,
     generate_membership_id,
