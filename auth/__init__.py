@@ -1,5 +1,4 @@
 # auth/__init__.py
-# Copyright @YourChannel
 
 from pyrogram import Client
 
@@ -10,18 +9,15 @@ from .admin_check import (
     setup,
 )
 
-# ── Force Subscribe ────────────────────────────────────────────
 from .force_sub import (
     setup_force_sub_handler,
     check_subscription,
 )
 
-# ════════════════════════════════════════════════════════════
 _AUTH_SETUPS = [
     setup,
-    # setup_otp,
+    setup_force_sub_handler,  # ✅ এটা আগে missing ছিল!
 ]
-# ════════════════════════════════════════════════════════════
 
 
 def setup_auth_handlers(app: Client) -> None:
