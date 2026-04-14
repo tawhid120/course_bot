@@ -6,7 +6,7 @@
 # Flow (Manual Payment — bKash / Nagad):
 #   Buy Now → Payment Method (bKash বা Nagad)
 #     → Instructions দেখানো
-#       → Phone Number চাওয়া (ঐচ্ছিক — skip করা যাবে)
+#       → Phone Number চাওয়া (আবশ্যিক)
 #         → Screenshot চাওয়া (ঐচ্ছিক — skip করা যাবে)
 #           → Admin কে notify করো
 #             → Admin Approve/Reject করে
@@ -239,31 +239,7 @@ def setup(app: Client) -> None:
         )
         await callback.answer("📲 Nagad নির্দেশনা")
 
-    # ── Skip Phone ────────────────────────────────────────────
-    @app.on_callback_query(filters.regex(r"^proof:skip_phone:([a-f0-9]{24})$"))
-    async def cb_skip_phone(client: Client, callback: CallbackQuery):
-        course_id = callback.matches[0].group(1)
-        uid       = callback.from_user.id
-        course    = await db.get_course_by_id(course_id)
-        if not course:
-            return await callback.answer(MSG.ERROR_COURSE_NOT_FOUND, show_alert=True)
-
-        state = _proof_state.get(uid)
-        if not state:
-            return await callback.answer("Session expired. আবার শুরু করুন।", show_alert=True)
-
-        state["phone"] = "N/A"
-        state["step"]  = "screenshot"
-
-        await callback.message.edit_text(
-            MSG.PROOF_ASK_SCREENSHOT.format(
-                course_name=course["name"], currency=course["currency"],
-                price=course["price"], method=state["method"], phone_line="",
-            ),
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=proof_cancel_kb(course_id),
-        )
-        await callback.answer("⏭ Phone skip করা হয়েছে")
+    # NOTE: cb_skip_phone handler সম্পূর্ণ সরানো হয়েছে কারণ ফোন নম্বর বাধ্যতামূলক।
 
     # ── Skip Screenshot — সরাসরি জমা দাও ─────────────────────
     @app.on_callback_query(filters.regex(r"^proof:skip_screenshot:([a-f0-9]{24})$"))
@@ -341,7 +317,8 @@ def setup(app: Client) -> None:
 
         await callback.answer("✅ জমা হয়েছে!")
 
-    # ── Admin Proof Approve ────────────────────────────────────
+    # ── Admin Proof Approve/Reject Sections remain the same ──
+    # [cb_proof_approve এবং cb_proof_reject ফাংশনগুলো এখানে অপরিবর্তিত থাকবে]
     @app.on_callback_query(filters.regex(r"^proof:approve:([a-f0-9]{24})$"))
     async def cb_proof_approve(client: Client, callback: CallbackQuery):
         from auth import is_admin
@@ -412,7 +389,6 @@ def setup(app: Client) -> None:
             )
         await callback.answer("✅ Approved!")
 
-    # ── Admin Proof Reject ─────────────────────────────────────
     @app.on_callback_query(filters.regex(r"^proof:reject:([a-f0-9]{24})$"))
     async def cb_proof_reject(client: Client, callback: CallbackQuery):
         from auth import is_admin
@@ -478,8 +454,11 @@ def setup(app: Client) -> None:
                 or (phone.startswith("+") and len(phone) > 8)
             )
             if not valid:
+                # পরিবর্তন এখানে: Mandatory message আপডেট করা হয়েছে
                 await message.reply_text(
-                    "⚠️ Valid Phone Number দিন।\n_e.g. 01712345678_\n\nঅথবা Skip করুন।",
+                    "⚠️ Valid Phone Number দিন।\n_e.g. 01712345678_\n\n"
+                    "📌 যে নম্বর থেকে bKash/Nagad করেছেন সেটা দিন।\n"
+                    "Payment verify করতে নম্বর **আবশ্যিক**।",
                     parse_mode=ParseMode.MARKDOWN,
                     reply_markup=proof_phone_kb(course_id),
                 )
@@ -498,7 +477,7 @@ def setup(app: Client) -> None:
                 reply_markup=proof_cancel_kb(course_id),
             )
 
-        # ── Screenshot (ঐচ্ছিক) ────────────────────────────────
+        # ── Screenshot logic remains the same ──────────────────
         elif step == "screenshot" and (message.photo or message.document):
             file_id      = message.photo.file_id if message.photo else message.document.file_id
             caption      = message.caption or "No caption"
