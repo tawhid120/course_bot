@@ -114,7 +114,7 @@ def course_detail_inline(course_id: str) -> InlineKeyboardMarkup:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  PAYMENT KEYBOARDS  (শুধু bKash ও Nagad)
+#  PAYMENT KEYBOARDS  (বিকাশ, নগদ এবং ফোন নম্বর মডিউল)
 # ════════════════════════════════════════════════════════════════════════════
 
 def payment_methods_kb(course_id: str) -> InlineKeyboardMarkup:
@@ -139,17 +139,16 @@ def payment_inline(course_id: str) -> InlineKeyboardMarkup:
 
 
 def proof_phone_kb(course_id: str) -> InlineKeyboardMarkup:
-    """Phone number input screen — Skip বাটন সহ।"""
+    """Phone number input screen — Skip বাটনটি সরানো হয়েছে (Mandatory)।"""
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("⏭ Phone নম্বর Skip করুন", callback_data=f"proof:skip_phone:{course_id}")],
-            [InlineKeyboardButton("❌ Cancel",                callback_data=f"cpay:back:{course_id}")],
+            [InlineKeyboardButton("❌ Cancel", callback_data=f"cpay:back:{course_id}")],
         ]
     )
 
 
 def proof_screenshot_kb(course_id: str) -> InlineKeyboardMarkup:
-    """Screenshot input screen — Skip বাটন সহ।"""
+    """Screenshot input screen — এখনো Skip করা যাবে।"""
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("⏭ Screenshot Skip করুন", callback_data=f"proof:skip_screenshot:{course_id}")],
