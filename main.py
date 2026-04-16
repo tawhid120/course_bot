@@ -1,10 +1,7 @@
 # main.py
 # Copyright @YourChannel
-# Channel t.me/YourChannel
 # ─────────────────────────────────────────────────────────────
-# এই ফাইলটা আর কখনো পরিবর্তন করতে হবে না।
-# নতুন plugin/auth/misc ফাইল যোগ করলে শুধু
-# সেই ফোল্ডারের __init__.py তে এক লাইন যোগ করো।
+# Strictly uses Polling (app.run()). No Webhooks, no FastAPI.
 # ─────────────────────────────────────────────────────────────
 
 import asyncio
@@ -38,13 +35,13 @@ asyncio.get_event_loop().run_until_complete(init_db())
 
 # ── সব handler register করো ───────────────────────────────────
 # ক্রম গুরুত্বপূর্ণ:
-#   1. plugins  (course flow, admin panel, start)
-#   2. auth     (login, logout, session)
-#   3. misc     (settings, referral, etc.)
-#   4. button_router (সবার শেষে — reply keyboard)
+#   1. auth     (force sub, admin check)
+#   2. plugins  (payment_request, dynamic_buttons, profile, course flow, admin)
+#   3. misc     (settings, etc.)
+#   4. button_router (সবার শেষে — reply keyboard static buttons)
 
-setup_plugins_handlers(app)
 setup_auth_handlers(app)
+setup_plugins_handlers(app)
 setup_misc_handlers(app)
 setup_button_router(app)
 
