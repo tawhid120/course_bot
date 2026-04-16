@@ -16,20 +16,21 @@ class States:
     VIEW_COURSE     = "view_course"
     PAYMENT         = "payment"
 
-    # ── Admin: Add Course (9 steps + Step 10 group) ───────────
-    ADMIN_ADD_BRAND    = "admin_add_brand"
-    ADMIN_ADD_BATCH    = "admin_add_batch"
-    ADMIN_ADD_CATEGORY = "admin_add_category"
-    ADMIN_ADD_SUBJECT  = "admin_add_subject"
-    ADMIN_ADD_NAME     = "admin_add_name"
-    ADMIN_ADD_DESC     = "admin_add_desc"
-    ADMIN_ADD_PRICE    = "admin_add_price"
-    ADMIN_ADD_CURRENCY = "admin_add_currency"
-    ADMIN_ADD_FILE     = "admin_add_file"
-    ADMIN_ADD_GROUP    = "admin_add_group"   # ← Step 10 নতুন
+    # ── Admin: Add Course (11 steps) ──────────────────────────
+    ADMIN_ADD_BRAND       = "admin_add_brand"
+    ADMIN_ADD_BATCH       = "admin_add_batch"
+    ADMIN_ADD_CATEGORY    = "admin_add_category"
+    ADMIN_ADD_SUBJECT     = "admin_add_subject"
+    ADMIN_ADD_NAME        = "admin_add_name"
+    ADMIN_ADD_DESC        = "admin_add_desc"
+    ADMIN_ADD_PRICE       = "admin_add_price"
+    ADMIN_ADD_CURRENCY    = "admin_add_currency"
+    ADMIN_ADD_FILE        = "admin_add_file"
+    ADMIN_ADD_GROUP       = "admin_add_group"
+    ADMIN_ADD_COURSE_CODE = "admin_add_course_code"  # ← নতুন Step 11
 
-    # ── Admin: Set group for existing course ──────────────────
-    ADMIN_SET_GROUP    = "admin_set_group"   # ← নতুন
+    # ── Admin: Set group / code for existing course ───────────
+    ADMIN_SET_GROUP = "admin_set_group"
 
     # ── Admin: Broadcast ──────────────────────────────────────
     ADMIN_BROADCAST = "admin_broadcast"
