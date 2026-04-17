@@ -66,17 +66,17 @@ def _admin_notify_kb(order_id: str, user_id: int) -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "✅ Approve",
+                    "✅ APPROVE",
                     callback_data=f"payreq:approve:{order_id}",
                 ),
                 InlineKeyboardButton(
-                    "❌ Reject",
+                    "❎ REJECT",
                     callback_data=f"payreq:reject:{order_id}",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    "🚫 Ban User",
+                    "⛔ BAN",
                     callback_data=f"payreq:ban:{user_id}:{order_id}",
                 ),
             ],
@@ -320,21 +320,16 @@ def setup(app: Client) -> None:
 
             # Admin দের notify করো
             admin_text = (
-                f"🔔 **নতুন Payment Request!**\n\n"
+                f"🔔 NEW PAYMENT REQUEST\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 **User:** [{user.first_name}](tg://user?id={uid}) (`{uid}`)\n"
-                f"📛 **Username:** {username_str}\n"
-                f"📦 **Course:** `{state['course_name']}`\n"
-                f"🏷 **Course Code:** `{state['course_code']}`\n"
-                f"💰 **Amount:** `{state['currency']} {state['price']}`\n"
-                f"💳 **Method:** `{method}`\n"
-                f"📱 **Phone:** `{state['phone']}`\n"
-                f"🔢 **TX ID:** `{text}`\n"
-                f"🆔 **Order ID:** `#{order_id[-8:]}`\n"
-                f"📅 **সময়:** {datetime.utcnow().strftime('%d %b %Y, %H:%M UTC')}\n"
+                f"👤 User: {user.first_name} (`{uid}`)\n"
+                f"📛 Username: {username_str}\n"
+                f"📱 Phone: {state['phone']}\n"
+                f"📦 Course Code: {state['course_code']}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"⬇️ Verify করে Approve বা Reject করুন:"
+                f"⬇️ Verify করে Approve, Reject বা Ban করুন:"
             )
+
 
             for admin_id in ADMIN_IDS:
                 try:
@@ -349,7 +344,6 @@ def setup(app: Client) -> None:
                         f"[PayReq] Admin {admin_id} notify failed: {e}"
                     )
 
-    # ── Admin: Approve ─────────────────────────────────────────
     @app.on_callback_query(
         filters.regex(r"^payreq:approve:([a-f0-9]{24})$")
     )
@@ -371,14 +365,16 @@ def setup(app: Client) -> None:
                 f"এই Order ইতিমধ্যে {order['status']}!", show_alert=True
             )
 
+        # ── Process Approval ──────────────────────────────────────
+        user_id = order["user_id"]
         membership_id = order.get("membership_id") or await db.get_unique_membership_id()
         await db.update_order_status(order_id, "approved")
         await db.update_order_membership(order_id, membership_id)
 
-        # Proof ও approve করো
+        # Update payment proof status
         proof = await db.get_db().payment_proofs.find_one(
             {
-                "user_id":   order["user_id"],
+                "user_id":   user_id,
                 "course_id": order["course_id"],
                 "status":    "pending",
             }
@@ -386,29 +382,51 @@ def setup(app: Client) -> None:
         if proof:
             await db.update_proof_status(str(proof["_id"]), "approved")
 
-        user_id = order["user_id"]
-        course  = await db.get_course_by_id(str(order["course_id"]))
+        # ── Generate Multi-Course Links ──────────────────────────
+        from plugins.group_manager import generate_one_time_link
 
-        # Membership Card পাঠাও
-        phone = order.get("phone_number") or "N/A"
-        await _send_membership_card(
-            client,
-            user_id,
-            order.get("user_name", "User"),
-            phone,
-            order["course_name"],
-            membership_id,
+        # Get Discussion Group Link for the approved course
+        course_info = await db.get_db().courses.find_one({"_id": ObjectId(order["course_id"])})
+        discussion_link = course_info.get("discussion_group_link", "https://t.me/+WU_Qyp-jlNdjOWU1") if course_info else "https://t.me/+WU_Qyp-jlNdjOWU1"
+
+        subjects = {
+            "Physics": "Physics",
+            "Chemistry": "Chemistry",
+            "Math": "Math",
+            "Biology": "Biology"
+        }
+
+        links_text = ""
+        for label, name in subjects.items():
+            # Find course by name to get group_id
+            course = await db.get_db().courses.find_one({"name": {"$regex": name, "$options": "i"}})
+            if course and course.get("group_id"):
+                link = await generate_one_time_link(client, int(course["group_id"]), user_id, name)
+                links_text += f"🔹 {label}: `{link if link else 'Failed'}`\n"
+            else:
+                links_text += f"🔹 {label}: `Not Set`\n"
+
+        approval_msg = (
+            f"✅ Payment Approved!\n\n"
+            f"🔗 Discussion Group :\n"
+            f"{discussion_link}\n\n"
+            f"📚 Course Links:\n"
+            f"{links_text}\n"
+            f"⏰ Link Valid : 24 Hours\n"
+            f"🔐 One Time Join Link"
         )
 
-        # OTL পাঠাও
-        if course:
-            try:
-                from plugins.group_manager import approve_and_send_link
-                await approve_and_send_link(
-                    client, order_id, callback.message.chat.id
-                )
-            except Exception as e:
-                LOGGER.warning(f"[PayReq] OTL failed: {e}")
+        # Send to User
+        try:
+            await client.send_message(user_id, approval_msg, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+        except Exception as e:
+            LOGGER.warning(f"[PayReq] Failed to send approval msg to {user_id}: {e}")
+
+        # Send Membership Card
+        phone = order.get("phone_number") or "N/A"
+        await _send_membership_card(
+            client, user_id, order.get("user_name", "User"), phone, order["course_name"], membership_id
+        )
 
         await callback.message.edit_text(
             f"✅ **Approved!**\n\n"
@@ -452,11 +470,8 @@ def setup(app: Client) -> None:
         try:
             await client.send_message(
                 order["user_id"],
-                MSG.PAYMENT_REJECTED.format(
-                    course_name=order["course_name"],
-                    order_id=order_id[-8:],
-                    support=SUPPORT_USERNAME,
-                ),
+                "❎ Payment Rejected!\n\n"
+                "👨‍💻 আপনি অকারণে মিথ‍্যা পেমেন্ট রিকোয়েস্ট দিচ্ছেন। দ্বিতীয়বার এমন মিথ‍্যা পেমেন্ট রিকোয়েস্ট পাঠালে আপনাকে এই বট থেকে ⛔ BAN করে দেওয়া হবে।",
                 parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:
@@ -488,8 +503,8 @@ def setup(app: Client) -> None:
         try:
             await client.send_message(
                 user_id,
-                f"🚫 **আপনাকে এই Bot থেকে Banned করা হয়েছে।**\n\n"
-                f"সাহায্যের জন্য: {SUPPORT_USERNAME}",
+                "⛔ BANNED\n\n"
+                "👨‍💻 আপনাকে এই বট থেকে BAN করা হয়েছে। আপনি আর কোনো ধরনের পেমেন্ট রিকোয়েস্ট পাঠাতে পারবেন না।",
                 parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:
@@ -500,6 +515,35 @@ def setup(app: Client) -> None:
             parse_mode=ParseMode.MARKDOWN,
         )
         await callback.answer(f"🚫 User {user_id} banned!")
+
+    # ── Admin: Unban User ──────────────────────────────────────
+    @app.on_message(
+        filters.command("unban") & filters.private
+    )
+    async def cmd_unban(client: Client, message: Message):
+        from auth import is_admin as _is_admin
+        if not _is_admin(message.from_user.id):
+            return
+
+        if len(message.command) < 2:
+            await message.reply_text(
+                "❌ **Usage:** `/unban {user_id}`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        try:
+            user_id = int(message.command[1])
+            await db.unban_user(user_id)
+            await message.reply_text(
+                f"✅ **User `{user_id}` has been unbanned successfully.**",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except ValueError:
+            await message.reply_text("❌ Please provide a valid numeric User ID.")
+        except Exception as e:
+            LOGGER.error(f"[PayReq] Unban failed: {e}")
+            await message.reply_text(f"❌ An error occurred: {e}")
 
     LOGGER.info("[PaymentRequest] Plugin loaded ✅")
 

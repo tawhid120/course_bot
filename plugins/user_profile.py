@@ -17,6 +17,26 @@ from config import SUPPORT_USERNAME
 from misc.keyboards import main_menu_inline
 from utils import LOGGER
 
+# ── Default Helpline Message (স্ক্রিনশটের মতো) ──────────────────
+_DEFAULT_HELPLINE = (
+    "🛠 **FCBD SUPPORT CENTER** 🛠\n\n"
+    "আপনার সমস্যার ধরন অনুযায়ী নিচের সাপোর্টে যোগাযোগ করুন 👇\n\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "📚 **Class / Document Issue**\n"
+    "কোর্সের কোনো ক্লাস বা ডকুমেন্টে সমস্যা হলে এখানে মেসেজ করুন:\n\n"
+    "👉 @FCBD_HELPLINE_BOT\n\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "💳 **Payment Issue**\n"
+    "পেমেন্ট সংক্রান্ত কোনো সমস্যা হলে এখানে যোগাযোগ করুন:\n\n"
+    "👉 @PCBD_HELPLINE_BOT\n\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "🎥 **How to Buy Course**\n"
+    "কিভাবে কোর্স কিনবেন বুঝতে সমস্যা হলে নিচের ভিডিওটি দেখুন 👇\n\n"
+    "▶️ (ভিডিও লিংক)\n\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    "⚡ দ্রুত সমাধানের জন্য সঠিক সাপোর্টে মেসেজ করুন"
+)
+
 
 def setup(app: Client) -> None:
 
@@ -104,40 +124,45 @@ def setup(app: Client) -> None:
             ),
         )
 
-    # ── ☎️ HELPLINE ────────────────────────────────────────────
+    # ── ☎️ HELPLINE (পুরনো বাটন label — backward compat) ──────
     @app.on_message(
         filters.private & filters.regex(r"^☎️ HELPLINE$"),
         group=20,
     )
-    async def btn_helpline(client: Client, message: Message):
-        # DB থেকে helpline message আনো (admin set করতে পারে)
-        helpline_text = await db.get_setting(
-            "helpline_message",
-            default=(
-                f"☎️ **Helpline**\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📞 **Support:** {SUPPORT_USERNAME}\n\n"
-                f"সকাল ৯টা — রাত ১১টা\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"💬 যেকোনো সমস্যায় আমাদের সাথে যোগাযোগ করুন।"
-            ),
-        )
+    async def btn_helpline_old(client: Client, message: Message):
+        await _send_helpline(message)
 
-        support = await db.get_setting("support_username", default=SUPPORT_USERNAME)
-
-        await message.reply_text(
-            helpline_text,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            f"💬 {support}",
-                            url=f"https://t.me/{support.lstrip('@')}",
-                        )
-                    ]
-                ]
-            ),
-        )
+    # ── 🧑‍💼 SUPPORT (নতুন বাটন label) ───────────────────────────
+    @app.on_message(
+        filters.private & filters.regex(r"^🧑‍💼 SUPPORT 🧑‍💼$"),
+        group=20,
+    )
+    async def btn_helpline_new(client: Client, message: Message):
+        await _send_helpline(message)
 
     LOGGER.info("[UserProfile] Plugin loaded ✅")
+
+
+# ════════════════════════════════════════════════════════════
+#  Helper — Helpline message পাঠানো
+# ════════════════════════════════════════════════════════════
+
+async def _send_helpline(message: Message) -> None:
+    """Helpline message পাঠানো।"""
+    helpline_text = await db.get_setting(
+        "helpline_message",
+        default=_DEFAULT_HELPLINE,
+    )
+    support = await db.get_setting("support_username", default=SUPPORT_USERNAME)
+
+    await message.reply_text(
+        helpline_text,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                f"💬 {support}",
+                url=f"https://t.me/{support.lstrip('@')}",
+            )],
+        ]),
+        disable_web_page_preview=True,
+    )

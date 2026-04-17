@@ -3,11 +3,18 @@
 
 from pyrogram import Client, filters
 from pyrogram.enums import ParseMode
-from pyrogram.types import CallbackQuery, Message
+from pyrogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+)
 
 import db
 from auth import is_admin
-from config import BOT_NAME, SUPPORT_USERNAME
+from config import BOT_NAME, SUPPORT_USERNAME, FORCE_SUB_CHANNEL
 from misc.messages import MSG
 from misc import (
     admin_panel_inline,
@@ -19,8 +26,60 @@ from misc import (
     set_state,
     States,
 )
-from misc.keyboards import main_reply_keyboard
+from misc.handlers import courses, orders, profile, helpline, admin
 from utils import LOGGER
+
+
+# ════════════════════════════════════════════════════════════
+#  Reply Keyboard Builder
+#  স্ক্রিনশট অনুযায়ী:
+#    Row 1: FREE COURSE | PAID COURSE
+#    Row 2: ACCOUNT DETAILS | SUPPORT
+#    Row 3: ADMIN PANEL (শুধু admin দেখবে)
+# ════════════════════════════════════════════════════════════
+
+def build_reply_keyboard(is_admin_user: bool = False) -> ReplyKeyboardMarkup:
+    if is_admin_user:
+        keyboard = [
+            [KeyboardButton("📚 COURSES"), KeyboardButton("📦 MY ORDERS")],
+            [KeyboardButton("👤 MY PROFILE"), KeyboardButton("📞 HELPLINE")],
+            [KeyboardButton("🛠️ ADMIN PANEL")],
+        ]
+    else:
+        keyboard = [
+            [KeyboardButton("📚 COURSES"), KeyboardButton("📦 MY ORDERS")],
+            [KeyboardButton("👤 MY PROFILE"), KeyboardButton("📞 HELPLINE")],
+        ]
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
+# ════════════════════════════════════════════════════════════
+#  Welcome Inline Keyboard
+# ════════════════════════════════════════════════════════════
+
+def _fcbd_community_kb() -> InlineKeyboardMarkup:
+    """স্ক্রিনশটের মতো — FCBD COMMUNITY বাটন।"""
+    channel_link = ""
+    if FORCE_SUB_CHANNEL:
+        _raw = str(FORCE_SUB_CHANNEL).strip()
+        if _raw.startswith("-100"):
+            channel_link = f"https://t.me/c/{_raw.lstrip('-100')}"
+        elif _raw.startswith("@"):
+            channel_link = f"https://t.me/{_raw.lstrip('@')}"
+        else:
+            channel_link = f"https://t.me/{_raw}"
+
+    if channel_link:
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("🌐 FCBD COMMUNITY", url=channel_link)],
+        ])
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🌐 FCBD COMMUNITY", callback_data="back:main")],
+    ])
 
 
 def setup(app: Client) -> None:
@@ -54,38 +113,41 @@ def setup(app: Client) -> None:
 
         LOGGER.info(f"[/start] user={user.id} ({user.username})")
 
-        # Dynamic Reply Keyboard পাঠাও
-        try:
-            from plugins.dynamic_buttons import build_dynamic_reply_keyboard
-            reply_kb = await build_dynamic_reply_keyboard()
-        except Exception:
-            reply_kb = main_reply_keyboard()
+        is_admin_user = is_admin(user.id)
+        reply_kb      = build_reply_keyboard(is_admin_user)
 
-        # Keyboard load message
+        # ── Step 1: Reply Keyboard load message ───────────────
         await message.reply_text(
             MSG.KEYBOARD_LOADED,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=reply_kb,
         )
 
-        # Welcome message
-        if is_admin(user.id):
-            welcome_text = MSG.WELCOME_ADMIN.format(
-                bot_name=BOT_NAME,
-                name=user.first_name,
-            )
-        else:
-            welcome_text = MSG.WELCOME.format(
-                bot_name=BOT_NAME,
-                name=user.first_name,
-            )
-
-        await message.reply_text(
-            welcome_text,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=main_menu_inline(),
-            disable_web_page_preview=True,
+        # ── Step 2: Welcome message (স্ক্রিনশটের মতো) ────────
+        welcome_text = (
+            f"🎉 **Free Course Bangladesh Bot-এ আপনাকে স্বাগতম** 🎉\n\n"
+            f"আমাদের চ্যানেলে যুক্ত হওয়ার জন্য অসংখ্য ধন্যবাদ।\n\n"
+            f"এই বটটি ব্যবহার করতে ছবিতে দেখানো আইকনে ক্লিক করুন। এরপর আপনার "
+            f"কিবোর্ডে প্রয়োজনীয় সকল বাটন দেখতে পাবেন, যা ব্যবহার করে আপনি "
+            f"সহজেই পরবর্তী ধাপে এগিয়ে যেতে পারবেন।\n\n"
+            f"আমাদের সাথে আপনার যাত্রা সুন্দর ও সফল হোক — এই কামনা রইলো। 😊"
         )
+
+        await message.reply_photo(
+            photo="assets/welcome.jpg",
+            caption=welcome_text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_fcbd_community_kb(),
+        )
+
+    # ══════════════════════════════════════════════════════════
+    #  Register Modular Handlers
+    # ══════════════════════════════════════════════════════════
+    courses.register_handlers(app)
+    orders.register_handlers(app)
+    profile.register_handlers(app)
+    helpline.register_handlers(app)
+    admin.register_handlers(app)
 
     # ══════════════════════════════════════════════════════════
     #  /admin
