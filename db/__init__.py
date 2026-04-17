@@ -12,11 +12,9 @@ from .database import (
     get_subjects,
     get_courses,
     get_course_by_id,
-    get_course_by_code,
     deactivate_course,
     get_all_courses_admin,
     set_course_group,
-    set_course_code,
     update_course_group_verified,
     get_courses_with_group,
 )
@@ -27,15 +25,11 @@ from .database import (
     get_user,
     get_all_users,
     get_total_users,
-)
-
-# Ban operations
-from .database import (
+    is_banned,
     ban_user,
     unban_user,
-    is_banned,
-    get_all_banned,
 )
+
 
 # Order operations
 from .database import (
@@ -65,19 +59,4 @@ from .database import (
 from .database import (
     get_unique_membership_id,
     generate_membership_id,
-)
-
-# Dynamic Buttons
-from .database import (
-    get_dynamic_buttons,
-    add_dynamic_button,
-    update_dynamic_button,
-    delete_dynamic_button,
-    get_dynamic_button,
-)
-
-# Settings
-from .database import (
-    get_setting,
-    set_setting,
 )
