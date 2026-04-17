@@ -40,16 +40,43 @@ BUTTON_COMMAND_MAP: Dict[str, str] = {
 }
 
 
-def main_reply_keyboard() -> ReplyKeyboardMarkup:
+def main_reply_keyboard(is_admin_user: bool = False) -> ReplyKeyboardMarkup:
+    if is_admin_user:
+        keyboard = [
+            [KeyboardButton("📚 COURSES"), KeyboardButton("📦 MY ORDERS")],
+            [KeyboardButton("👤 MY PROFILE"), KeyboardButton("📞 HELPLINE")],
+            [KeyboardButton("🛠️ ADMIN PANEL")],
+        ]
+    else:
+        keyboard = [
+            [KeyboardButton("📚 COURSES"), KeyboardButton("📦 MY ORDERS")],
+            [KeyboardButton("👤 MY PROFILE"), KeyboardButton("📞 HELPLINE")],
+        ]
     return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton("🏠 Home"),      KeyboardButton("📚 Courses")],
-            [KeyboardButton("🛒 My Orders"), KeyboardButton("❓ Help")],
-            [KeyboardButton("👤 Profile"),   KeyboardButton("🛠 Admin Panel")],
-        ],
+        keyboard=keyboard,
         resize_keyboard=True,
         one_time_keyboard=False,
     )
+
+def _fcbd_community_kb() -> InlineKeyboardMarkup:
+    """স্ক্রিনশটের মতো — FCBD COMMUNITY বাটন।"""
+    channel_link = ""
+    if FORCE_SUB_CHANNEL:
+        _raw = str(FORCE_SUB_CHANNEL).strip()
+        if _raw.startswith("-100"):
+            channel_link = f"https://t.me/c/{_raw.lstrip('-100')}"
+        elif _raw.startswith("@"):
+            channel_link = f"https://t.me/{_raw.lstrip('@')}"
+        else:
+            channel_link = f"https://t.me/{_raw}"
+
+    if channel_link:
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("🌐 FCBD COMMUNITY", url=channel_link)],
+        ])
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🌐 FCBD COMMUNITY", callback_data="back:main")],
+    ])
 
 
 # ════════════════════════════════════════════════════════════════════════════
