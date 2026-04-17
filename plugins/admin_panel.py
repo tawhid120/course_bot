@@ -885,14 +885,19 @@ def setup(app: Client) -> None:
             checking = await message.reply_text(f"⏳ Group `{group_id}` check হচ্ছে...", parse_mode=ParseMode.MARKDOWN)
             from plugins.group_manager import check_bot_is_admin
             result = await check_bot_is_admin(client, group_id)
+            
+            # Fix: extract f-string variables before using them to avoid backslash issues
             checked = result["is_admin"] and result["can_invite"] and not result["error"]
+            status_icon = '✅' if checked else '⚠️'
+            status_text = '✅ Verified' if checked else result.get('error', 'Bot admin নয়')
+            
             await db.set_course_group(course_id, group_id, group_checked=checked)
             clear_state(uid)
             await checking.edit_text(
-                f"{'✅' if checked else '⚠️'} **Group Set!**\n\n"
+                f"{status_icon} **Group Set!**\n\n"
                 f"📦 Course: `{data.get('course_name')}`\n"
                 f"👥 Group ID: `{group_id}`\n"
-                f"📌 Status: {'✅ Verified' if checked else f'⚠️ {result.get(\"error\", \"Bot admin নয়\")}'}",
+                f"📌 Status: {status_text}",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=admin_back_panel_inline(),
             )
