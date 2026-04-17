@@ -6,6 +6,7 @@
 # ✅ FIXED: stop_propagation() সঠিক জায়গায়
 # ✅ OPTIMIZED: TTL cache (member=5min, non-member=15sec)
 # ✅ OPTIMIZED: API timeout with asyncio.wait_for()
+# ✅ NEW: Force sub verify হলে welcome message + reply keyboard দেখাবে
 # ─────────────────────────────────────────────────────────────
 
 import asyncio
@@ -27,7 +28,7 @@ from pyrogram.types import (
     Message,
 )
 
-from config import ADMIN_IDS, FORCE_SUB_CHANNEL, SUPPORT_USERNAME
+from config import ADMIN_IDS, FORCE_SUB_CHANNEL, SUPPORT_USERNAME, BOT_NAME
 from utils import LOGGER
 
 # ═══════════════════════════════════════════════
@@ -174,6 +175,55 @@ _NOT_SUBSCRIBED_TEXT = (
 
 
 # ═══════════════════════════════════════════════
+#  WELCOME MESSAGE HELPERS
+# ═══════════════════════════════════════════════
+
+def _build_welcome_reply_keyboard(is_admin_user: bool):
+    """
+    Welcome message এর নিচে Reply Keyboard তৈরি করো।
+    Admin হলে ADMIN PANEL বাটন দেখাবে।
+    """
+    from pyrogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+    if is_admin_user:
+        keyboard = [
+            [KeyboardButton("🆓 FREE COURSE 🆓"), KeyboardButton("💸 PAID COURSE 💸")],
+            [KeyboardButton("👤 ACCOUNT DETAILS"), KeyboardButton("🧑‍💼 SUPPORT 🧑‍💼")],
+            [KeyboardButton("🛠 ADMIN PANEL")],
+        ]
+    else:
+        keyboard = [
+            [KeyboardButton("🆓 FREE COURSE 🆓"), KeyboardButton("💸 PAID COURSE 💸")],
+            [KeyboardButton("👤 ACCOUNT DETAILS"), KeyboardButton("🧑‍💼 SUPPORT 🧑‍💼")],
+        ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
+def _build_welcome_inline_keyboard() -> InlineKeyboardMarkup:
+    """Welcome message এর নিচে Inline Keyboard (FCBD COMMUNITY বাটন)।"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🌐 FCBD COMMUNITY", url=CHANNEL_LINK)],
+    ])
+
+
+def _build_welcome_text(name: str) -> str:
+    """Welcome message text।"""
+    return (
+        f"🎉 **Free Course Bangladesh Bot-এ আপনাকে স্বাগতম** 🎉\n\n"
+        f"আমাদের চ্যানেলে যুক্ত হওয়ার জন্য অসংখ্য ধন্যবাদ।\n\n"
+        f"এই বটটি ব্যবহার করতে ছবিতে দেখানো আইকনে ক্লিক করুন। এরপর আপনার "
+        f"কিবোর্ডে প্রয়োজনীয় সকল বাটন দেখতে পাবেন, যা ব্যবহার করে আপনি "
+        f"সহজেই পরবর্তী ধাপে এগিয়ে যেতে পারবেন।\n\n"
+        f"আমাদের সাথে আপনার যাত্রা সুন্দর ও সফল হোক — এই কামনা রইলো। 😊"
+    )
+
+
+# ═══════════════════════════════════════════════
 #  SETUP — main entry point
 # ═══════════════════════════════════════════════
 
@@ -254,11 +304,13 @@ def setup_force_sub_handler(app: Client) -> None:
     )
     async def _check_joined(client: Client, callback: CallbackQuery):
         user_id = callback.from_user.id
+        user    = callback.from_user
 
         _cache_clear(user_id)
         is_sub = await check_subscription(client, user_id, refresh=True)
 
         if is_sub:
+            # পুরনো "join করুন" message মুছে ফেলো
             try:
                 await callback.message.delete()
             except Exception:
@@ -270,18 +322,27 @@ def setup_force_sub_handler(app: Client) -> None:
             )
             LOGGER.info(f"[ForceSub] ✅ Verified | user={user_id}")
 
+            # Admin কিনা check করো
+            is_admin_user = user_id in ADMIN_IDS
+
+            # ── Step 1: Reply Keyboard পাঠাও ──────────────────
+            reply_kb = _build_welcome_reply_keyboard(is_admin_user)
+            await client.send_message(
+                user_id,
+                "__Keyboard লোড হয়েছে।__",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_kb,
+            )
+
+            # ── Step 2: Welcome Message পাঠাও ─────────────────
+            # স্ক্রিনশটের মতো — welcome text + FCBD COMMUNITY inline button
             try:
-                await client.send_message(
+                await client.send_photo(
                     user_id,
-                    "✅ **Channel Verification সফল!**\n\n"
-                    "এখন Bot এর সব Feature ব্যবহার করতে পারবেন। 🎉",
+                    photo="assets/welcome.jpg",
+                    caption=_build_welcome_text(user.first_name),
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton(
-                            "🏠 Main Menu",
-                            callback_data="back:main",
-                        )],
-                    ]),
+                    reply_markup=_build_welcome_inline_keyboard(),
                 )
             except Exception as e:
                 LOGGER.warning(f"[ForceSub] Welcome msg failed | user={user_id}: {e}")
